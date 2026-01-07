@@ -160,9 +160,56 @@ class BidirectionalPipe:
         stdin = self._get_stdin()
 
         try:
-            while True:
-                # Read from stdin in executor to avoid blocking
-                data = await loop.run_in_executor(None, stdin.read, 4096)
+            # Try to use asyncio reader for stdin (Unix only, non-blocking)
+            import sys
+            import os
+            if hasattr(os, 'set_blocking') and stdin == sys.stdin.buffer:
+                try:
+                    # Make stdin non-blocking and use asyncio reader
+                    os.set_blocking(stdin.fileno(), False)
+                    reader = asyncio.StreamReader()
+                    protocol = asyncio.StreamReaderProtocol(reader)
+                    await loop.connect_read_pipe(lambda: protocol, stdin)
+
+                    while not self._done.is_set():
+                        try:
+                            data = await asyncio.wait_for(reader.read(4096), timeout=0.5)
+                            if not data:
+                                self._status("EOF on stdin")
+                                if self._protocol and self._protocol.transport:
+                                    self._protocol.transport.loseWriteConnection()
+                                break
+                            if self._protocol:
+                                self._protocol.send(data)
+                        except asyncio.TimeoutError:
+                            continue  # Check _done flag and continue
+                    return
+                except (OSError, NotImplementedError):
+                    # Fall back to executor-based reading
+                    pass
+
+            # Fallback: Use executor with timeout-based reads
+            import select
+            while not self._done.is_set():
+                # Use select to check if stdin has data (with timeout for signal handling)
+                if hasattr(select, 'select'):
+                    try:
+                        readable, _, _ = select.select([stdin], [], [], 0.5)
+                        if not readable:
+                            continue  # Timeout - check for signals
+                    except (ValueError, OSError):
+                        # stdin might be closed or not selectable
+                        pass
+
+                # Read with a small timeout via executor
+                try:
+                    data = await asyncio.wait_for(
+                        loop.run_in_executor(None, stdin.read, 4096),
+                        timeout=0.5
+                    )
+                except asyncio.TimeoutError:
+                    continue  # Check _done flag and continue
+
                 if not data:
                     self._status("EOF on stdin")
                     if self._protocol and self._protocol.transport:
@@ -170,6 +217,8 @@ class BidirectionalPipe:
                     break
                 if self._protocol:
                     self._protocol.send(data)
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
             self._status(f"stdin error: {e}")
         finally:
@@ -214,13 +263,19 @@ class BidirectionalPipe:
             except asyncio.CancelledError:
                 pass
 
-    async def run_as_initiator(self, manager: Any, protocol_name: str = "wh-nc") -> None:
+    async def run_as_initiator(
+        self,
+        manager: Any,
+        protocol_name: str = "wh-nc",
+        shutdown_event: Optional[asyncio.Event] = None,
+    ) -> None:
         """
         Run as the initiating side (connects to peer).
 
         Args:
             manager: WormholeManager instance (must be dilated).
             protocol_name: Name of the subprotocol to use.
+            shutdown_event: Optional event to signal shutdown.
         """
         from twisted.internet import defer
 
@@ -263,7 +318,19 @@ class BidirectionalPipe:
 
         # Run the bidirectional pipe
         self._read_task = asyncio.create_task(self._pump_stdin())
-        await self._done.wait()
+
+        # Wait for done or shutdown
+        if shutdown_event:
+            done_task = asyncio.create_task(self._done.wait())
+            shutdown_task = asyncio.create_task(shutdown_event.wait())
+            await asyncio.wait(
+                [done_task, shutdown_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            if shutdown_event.is_set():
+                self._done.set()
+        else:
+            await self._done.wait()
 
         if self._read_task and not self._read_task.done():
             self._read_task.cancel()
@@ -272,13 +339,19 @@ class BidirectionalPipe:
             except asyncio.CancelledError:
                 pass
 
-    async def run_as_listener(self, manager: Any, protocol_name: str = "wh-nc") -> None:
+    async def run_as_listener(
+        self,
+        manager: Any,
+        protocol_name: str = "wh-nc",
+        shutdown_event: Optional[asyncio.Event] = None,
+    ) -> None:
         """
         Run as the listening side (accepts connection from peer).
 
         Args:
             manager: WormholeManager instance (must be dilated).
             protocol_name: Name of the subprotocol to use.
+            shutdown_event: Optional event to signal shutdown.
         """
         # Listen for peer's connection
         endpoint = manager.listener_for(protocol_name)
@@ -312,17 +385,38 @@ class BidirectionalPipe:
         port = await future
         self._status("Listening for peer connection...")
 
-        # Wait for connection
-        await connected.wait()
-        self._status("Peer connected")
+        # Wait for connection or shutdown
+        if shutdown_event:
+            connected_task = asyncio.create_task(connected.wait())
+            shutdown_task = asyncio.create_task(shutdown_event.wait())
+            done, pending = await asyncio.wait(
+                [connected_task, shutdown_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            for task in pending:
+                task.cancel()
+            if shutdown_event.is_set():
+                return
+        else:
+            await connected.wait()
 
-        # The protocol was set by the factory when connection came in
-        # Get it from the factory's last built protocol
-        # Actually we need to track this better - let's use a different approach
+        self._status("Peer connected")
 
         # Run the bidirectional pipe
         self._read_task = asyncio.create_task(self._pump_stdin())
-        await self._done.wait()
+
+        # Wait for done or shutdown
+        if shutdown_event:
+            done_task = asyncio.create_task(self._done.wait())
+            shutdown_task = asyncio.create_task(shutdown_event.wait())
+            await asyncio.wait(
+                [done_task, shutdown_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            if shutdown_event.is_set():
+                self._done.set()
+        else:
+            await self._done.wait()
 
         if self._read_task and not self._read_task.done():
             self._read_task.cancel()

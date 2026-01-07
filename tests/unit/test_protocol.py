@@ -181,3 +181,56 @@ class TestBidirectionalPipe:
         assert not pipe._done.is_set()
         pipe._on_connection_lost(None)
         assert pipe._done.is_set()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_event_stops_listener(self):
+        """Test that shutdown_event can stop the listener."""
+        import asyncio
+        from wh.core.protocol import BidirectionalPipe
+        from unittest.mock import AsyncMock, MagicMock
+
+        # Create a mock manager
+        manager = MagicMock()
+        mock_endpoint = MagicMock()
+
+        # Create a deferred-like object that resolves immediately
+        class MockDeferred:
+            def addCallbacks(self, callback, errback):
+                # Simulate async resolution
+                callback(MagicMock())
+
+        mock_endpoint.listen.return_value = MockDeferred()
+        manager.listener_for.return_value = mock_endpoint
+
+        # Create pipe and shutdown event
+        stdout = BytesIO()
+        pipe = BidirectionalPipe(stdin=BytesIO(b""), stdout=stdout)
+        shutdown_event = asyncio.Event()
+
+        # Set shutdown immediately
+        shutdown_event.set()
+
+        # This should return quickly due to shutdown
+        await pipe.run_as_listener(manager, shutdown_event=shutdown_event)
+
+        # Should have returned without error
+        assert shutdown_event.is_set()
+
+    @pytest.mark.asyncio
+    async def test_pump_stdin_respects_done_flag(self):
+        """Test that stdin pump stops when done flag is set."""
+        import asyncio
+        from wh.core.protocol import BidirectionalPipe
+
+        stdin = BytesIO(b"")  # Empty stdin will cause EOF
+        stdout = BytesIO()
+        pipe = BidirectionalPipe(stdin=stdin, stdout=stdout)
+
+        # Pre-set done flag
+        pipe._done.set()
+
+        # Pump should complete quickly
+        try:
+            await asyncio.wait_for(pipe._pump_stdin(), timeout=2.0)
+        except asyncio.TimeoutError:
+            pytest.fail("Stdin pump did not respect done flag")
