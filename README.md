@@ -634,7 +634,7 @@ mypy src
 - [x] **Multi-Relay Config**: Configure multiple relays (`~/.wh/relays.yaml`)
 - [x] **Code Length**: Configurable code entropy (`-c 4` for 4-word codes)
 - [x] **Browser Extension**: Chrome extension for browsing wh:// URLs
-- [ ] **Relay-Scoped WNS**: Privacy-preserving namespace encryption
+- [x] **Relay-Scoped WNS**: Privacy-preserving namespace encryption
 - [ ] **Web Server Integration**: Apache/Nginx/HAProxy wormhole modules
 
 See [ROADMAP.md](ROADMAP.md) for detailed plans.
