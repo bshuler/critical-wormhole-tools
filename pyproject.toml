@@ -1,0 +1,96 @@
+[project]
+name = "critical-wormhole"
+version = "0.1.0"
+description = "Critical Wormhole Tools - Secure network utilities using Magic Wormhole code-based addressing"
+authors = [{name = "Critical Wormhole Team"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet",
+    "Topic :: System :: Networking",
+    "Topic :: Security",
+    "Topic :: Communications :: File Sharing",
+    "Topic :: Utilities",
+]
+keywords = [
+    "wormhole", "ssh", "sftp", "scp", "netcat", "tunnel",
+    "secure", "transfer", "curl", "wget", "magic-wormhole",
+    "p2p", "peer-to-peer", "encrypted", "NAT-traversal"
+]
+
+[project.urls]
+Homepage = "https://github.com/criticalwormhole/cwt"
+Documentation = "https://github.com/criticalwormhole/cwt#readme"
+Repository = "https://github.com/criticalwormhole/cwt.git"
+Issues = "https://github.com/criticalwormhole/cwt/issues"
+Changelog = "https://github.com/criticalwormhole/cwt/blob/main/CHANGELOG.md"
+
+dependencies = [
+    "magic-wormhole>=0.14.0",
+    "asyncssh>=2.14.0",
+    "click>=8.0.0",
+    "twisted>=22.0.0",
+    "attrs>=21.0.0",
+    "httpx>=0.25.0",
+    "rich>=13.0.0",
+    "noiseprotocol>=0.3.0",  # Required for wormhole dilation
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+    "crochet>=2.0.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+]
+
+[project.scripts]
+wh = "wh.cli.main:cli"
+cwt = "wh.cli.main:cli"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests (slow, require network)",
+]
+addopts = "-v --tb=short"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"

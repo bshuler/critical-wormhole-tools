@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>critical-wormhole</id>
+    <version>0.1.0</version>
+    <title>Critical Wormhole Tools</title>
+    <authors>Critical Wormhole Team</authors>
+    <owners>criticalwormhole</owners>
+    <licenseUrl>https://github.com/criticalwormhole/cwt/blob/main/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/criticalwormhole/cwt</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/criticalwormhole/cwt/main/assets/logo.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+Critical Wormhole Tools - Secure network utilities using Magic Wormhole code-based addressing.
+
+Includes:
+- wh nc: Netcat over wormhole
+- wh ssh: SSH over wormhole
+- wh scp: Secure copy over wormhole
+- wh sftp: Interactive SFTP over wormhole
+- wh curl: HTTP requests through wormhole
+- wh wget: File downloads through wormhole
+
+No IP addresses, no port forwarding, no firewall rules. Just share a simple code like "7-guitar-sunset" and connect securely from anywhere.
+    </description>
+    <summary>Secure network tools with code-based addressing</summary>
+    <releaseNotes>https://github.com/criticalwormhole/cwt/releases</releaseNotes>
+    <copyright>Copyright 2024 Critical Wormhole Team</copyright>
+    <tags>wormhole ssh sftp scp netcat security tunnel encrypted p2p</tags>
+    <dependencies>
+      <dependency id="python" version="[3.10,)" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
