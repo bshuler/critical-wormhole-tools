@@ -103,5 +103,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **0.1.0** - Initial release with core network tools
 
-[Unreleased]: https://github.com/criticalwormhole/cwt/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/criticalwormhole/cwt/releases/tag/v0.1.0
+[Unreleased]: https://github.com/bshuler/critical-wormhole-tools/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/bshuler/critical-wormhole-tools/releases/tag/v0.1.0

@@ -35,11 +35,11 @@ keywords = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/criticalwormhole/cwt"
-Documentation = "https://github.com/criticalwormhole/cwt#readme"
-Repository = "https://github.com/criticalwormhole/cwt.git"
-Issues = "https://github.com/criticalwormhole/cwt/issues"
-Changelog = "https://github.com/criticalwormhole/cwt/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/bshuler/critical-wormhole-tools"
+Documentation = "https://github.com/bshuler/critical-wormhole-tools#readme"
+Repository = "https://github.com/bshuler/critical-wormhole-tools.git"
+Issues = "https://github.com/bshuler/critical-wormhole-tools/issues"
+Changelog = "https://github.com/bshuler/critical-wormhole-tools/blob/main/CHANGELOG.md"
 
 dependencies = [
     "magic-wormhole>=0.14.0",

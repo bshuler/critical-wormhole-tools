@@ -407,8 +407,8 @@ wh --namespace=engineering ssh team-server
 
 We welcome community input on prioritization and new feature ideas!
 
-- **Discussions**: [GitHub Discussions](https://github.com/criticalwormhole/cwt/discussions)
-- **Feature Requests**: [GitHub Issues](https://github.com/criticalwormhole/cwt/issues/new?template=feature_request.md)
+- **Discussions**: [GitHub Discussions](https://github.com/bshuler/critical-wormhole-tools/discussions)
+- **Feature Requests**: [GitHub Issues](https://github.com/bshuler/critical-wormhole-tools/issues/new?template=feature_request.md)
 - **RFC Process**: Major features go through RFC process in `/rfcs` directory
 
 ---

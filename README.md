@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/criticalwormhole/cwt/actions/workflows/ci.yml">
-    <img src="https://github.com/criticalwormhole/cwt/actions/workflows/ci.yml/badge.svg" alt="CI Status">
+  <a href="https://github.com/bshuler/critical-wormhole-tools/actions/workflows/ci.yml">
+    <img src="https://github.com/bshuler/critical-wormhole-tools/actions/workflows/ci.yml/badge.svg" alt="CI Status">
   </a>
-  <a href="https://codecov.io/gh/criticalwormhole/cwt">
-    <img src="https://codecov.io/gh/criticalwormhole/cwt/branch/main/graph/badge.svg" alt="codecov">
+  <a href="https://codecov.io/gh/bshuler/critical-wormhole-tools">
+    <img src="https://codecov.io/gh/bshuler/critical-wormhole-tools/branch/main/graph/badge.svg" alt="codecov">
   </a>
   <a href="https://pypi.org/project/critical-wormhole/">
     <img src="https://img.shields.io/pypi/v/critical-wormhole.svg" alt="PyPI version">
@@ -21,8 +21,8 @@
   <a href="https://pypi.org/project/critical-wormhole/">
     <img src="https://img.shields.io/pypi/pyversions/critical-wormhole.svg" alt="Python versions">
   </a>
-  <a href="https://github.com/criticalwormhole/cwt/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/criticalwormhole/cwt.svg" alt="License">
+  <a href="https://github.com/bshuler/critical-wormhole-tools/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/bshuler/critical-wormhole-tools.svg" alt="License">
   </a>
 </p>
 
@@ -30,14 +30,14 @@
   <a href="https://pypi.org/project/critical-wormhole/">
     <img src="https://img.shields.io/pypi/dm/critical-wormhole.svg" alt="Downloads">
   </a>
-  <a href="https://github.com/criticalwormhole/cwt/stargazers">
-    <img src="https://img.shields.io/github/stars/criticalwormhole/cwt.svg" alt="GitHub stars">
+  <a href="https://github.com/bshuler/critical-wormhole-tools/stargazers">
+    <img src="https://img.shields.io/github/stars/bshuler/critical-wormhole-tools.svg" alt="GitHub stars">
   </a>
-  <a href="https://github.com/criticalwormhole/cwt/network/members">
-    <img src="https://img.shields.io/github/forks/criticalwormhole/cwt.svg" alt="GitHub forks">
+  <a href="https://github.com/bshuler/critical-wormhole-tools/network/members">
+    <img src="https://img.shields.io/github/forks/bshuler/critical-wormhole-tools.svg" alt="GitHub forks">
   </a>
-  <a href="https://github.com/criticalwormhole/cwt/issues">
-    <img src="https://img.shields.io/github/issues/criticalwormhole/cwt.svg" alt="GitHub issues">
+  <a href="https://github.com/bshuler/critical-wormhole-tools/issues">
+    <img src="https://img.shields.io/github/issues/bshuler/critical-wormhole-tools.svg" alt="GitHub issues">
   </a>
 </p>
 
@@ -102,7 +102,7 @@ choco install critical-wormhole
 ### From Source
 
 ```bash
-git clone https://github.com/criticalwormhole/cwt.git
+git clone https://github.com/bshuler/critical-wormhole-tools.git
 cd cwt
 pip install -e ".[dev]"
 ```
@@ -287,7 +287,7 @@ wh --relay ws://my-relay.example.com:4000/v1 nc -l
 ### Setup
 
 ```bash
-git clone https://github.com/criticalwormhole/cwt.git
+git clone https://github.com/bshuler/critical-wormhole-tools.git
 cd cwt
 pip install -e ".[dev]"
 ```
@@ -361,8 +361,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 </p>
 
 <p align="center">
-  <a href="https://github.com/criticalwormhole/cwt">GitHub</a> •
+  <a href="https://github.com/bshuler/critical-wormhole-tools">GitHub</a> •
   <a href="https://pypi.org/project/critical-wormhole/">PyPI</a> •
-  <a href="https://github.com/criticalwormhole/cwt/issues">Issues</a> •
-  <a href="https://github.com/criticalwormhole/cwt/discussions">Discussions</a>
+  <a href="https://github.com/bshuler/critical-wormhole-tools/issues">Issues</a> •
+  <a href="https://github.com/bshuler/critical-wormhole-tools/discussions">Discussions</a>
 </p>
