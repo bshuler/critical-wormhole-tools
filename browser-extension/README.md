@@ -374,6 +374,159 @@ The extension implements the complete Magic Wormhole protocol:
 2. Check that files exist in the served directory
 3. Look for CORS errors in the console
 
+## Running Your Own Relay
+
+By default, `wh` uses the public Magic Wormhole relay servers. For privacy, reliability, or air-gapped networks, you can run your own.
+
+### Why Self-Host?
+
+- **Privacy**: Keep connection metadata on your own infrastructure
+- **Reliability**: No dependency on public infrastructure
+- **Air-gapped networks**: Run wormhole on isolated networks
+- **Performance**: Lower latency with geographically closer relays
+
+### Architecture
+
+Magic Wormhole uses two relay types:
+
+```
+┌─────────────┐         ┌─────────────────────┐         ┌─────────────┐
+│   Client A  │◄───────►│   Mailbox Server    │◄───────►│   Client B  │
+│             │         │ (rendezvous/signaling)        │             │
+└──────┬──────┘         └─────────────────────┘         └──────┬──────┘
+       │                                                        │
+       │                ┌─────────────────────┐                │
+       └───────────────►│   Transit Relay     │◄───────────────┘
+                        │   (data transfer)   │
+                        └─────────────────────┘
+```
+
+- **Mailbox Server**: Handles code exchange and signaling (WebSocket)
+- **Transit Relay**: Relays encrypted data if direct connection fails (TCP)
+
+### Option 1: Docker (Recommended)
+
+```bash
+# Run mailbox server (rendezvous)
+docker run -d --name wormhole-mailbox \
+  -p 4000:4000 \
+  ghcr.io/magic-wormhole/magic-wormhole-mailbox-server:latest
+
+# Run transit relay
+docker run -d --name wormhole-transit \
+  -p 4001:4001 \
+  ghcr.io/magic-wormhole/magic-wormhole-transit-relay:latest
+```
+
+### Option 2: Install from PyPI
+
+```bash
+# Install servers
+pip install magic-wormhole-mailbox-server magic-wormhole-transit-relay
+
+# Run mailbox server (default port 4000)
+twist wormhole-mailbox --port 4000
+
+# Run transit relay (default port 4001)
+twist wormhole-transit --port 4001
+```
+
+### Option 3: From Source
+
+```bash
+# Mailbox server
+git clone https://github.com/magic-wormhole/magic-wormhole-mailbox-server
+cd magic-wormhole-mailbox-server
+pip install -e .
+twist wormhole-mailbox
+
+# Transit relay
+git clone https://github.com/magic-wormhole/magic-wormhole-transit-relay
+cd magic-wormhole-transit-relay
+pip install -e .
+twist wormhole-transit
+```
+
+### Configuring wh to Use Your Relay
+
+```bash
+# Via command line flags
+wh --relay ws://your-server:4000/v1 --transit tcp:your-server:4001 listen -p 8080
+
+# Via environment variables (recommended)
+export WH_RELAY=ws://your-server:4000/v1
+export WH_TRANSIT=tcp:your-server:4001
+wh listen -p 8080
+
+# In ~/.bashrc or ~/.zshrc for permanent config
+echo 'export WH_RELAY=ws://relay.mycompany.com:4000/v1' >> ~/.bashrc
+echo 'export WH_TRANSIT=tcp:relay.mycompany.com:4001' >> ~/.bashrc
+```
+
+### Production Deployment
+
+For production, use a reverse proxy with TLS:
+
+```nginx
+# /etc/nginx/sites-available/wormhole
+server {
+    listen 443 ssl;
+    server_name relay.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/relay.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/relay.example.com/privkey.pem;
+
+    # Mailbox (WebSocket)
+    location /v1 {
+        proxy_pass http://127.0.0.1:4000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+    }
+}
+
+# Transit relay (TCP passthrough)
+stream {
+    server {
+        listen 4001;
+        proxy_pass 127.0.0.1:4001;
+    }
+}
+```
+
+Then configure clients:
+```bash
+export WH_RELAY=wss://relay.example.com/v1
+export WH_TRANSIT=tcp:relay.example.com:4001
+```
+
+### Browser Extension with Custom Relay
+
+The browser extension can also use custom relays. Edit `src/config.js`:
+
+```javascript
+export const CONFIG = {
+  RELAY_URL: 'wss://your-relay.example.com/v1',
+  TRANSIT_RELAY: 'your-relay.example.com:4001'
+};
+```
+
+Then rebuild: `npm run build`
+
+### Future: Built-in Relay Mode
+
+We're considering adding a built-in relay mode to `wh` itself:
+
+```bash
+# Proposed future feature
+wh relay --port 4000 --transit-port 4001
+
+# Would make wh completely self-contained!
+```
+
+This would eliminate external dependencies entirely. Track progress in [GitHub Issues](https://github.com/bshuler/critical-wormhole-tools/issues).
+
 ## Contributing
 
 1. Fork the repository
@@ -391,3 +544,5 @@ MIT License - see main project LICENSE file.
 - [Main Project](https://github.com/bshuler/critical-wormhole-tools)
 - [Magic Wormhole Protocol](https://magic-wormhole.readthedocs.io/)
 - [Protocol Specification](../docs/protocol/PROTOCOL.md)
+- [Mailbox Server](https://github.com/magic-wormhole/magic-wormhole-mailbox-server)
+- [Transit Relay](https://github.com/magic-wormhole/magic-wormhole-transit-relay)

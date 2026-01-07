@@ -121,6 +121,7 @@ from wh.cli.proxy import proxy
 from wh.cli.rsync import rsync
 from wh.cli.serve import serve
 from wh.cli.daemon import daemon
+from wh.cli.relay import relay
 from wh.wns.cli import identity, alias
 
 cli.add_command(nc)
@@ -136,6 +137,7 @@ cli.add_command(proxy)
 cli.add_command(rsync)
 cli.add_command(serve)
 cli.add_command(daemon)
+cli.add_command(relay)
 cli.add_command(identity)
 cli.add_command(alias)
 

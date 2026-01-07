@@ -215,7 +215,7 @@ wh serve --ssh --identity <address>     # Use specific identity
 
 ---
 
-## Phase 4: Browser Integration (v0.4.0) 🚧 IN PROGRESS
+## Phase 4: Browser Integration (v0.4.0) ✅ COMPLETE
 
 ### Wormhole Browser Extension
 
@@ -231,14 +231,31 @@ A Chrome/Firefox extension that allows browsing websites hosted on wormhole addr
 | `wh daemon` command | ✅ Complete | Local HTTP API server |
 | PAC proxy configuration | ✅ Complete | Routes `wh://` URLs through daemon |
 | Native messaging host | ✅ Complete | Bridge for tighter integration |
+| `wh relay` command | ✅ Complete | Built-in relay server (mailbox + transit) |
 
 #### Pending Features
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Full HTTP proxy | 📋 Pending | Complete request proxying through wormhole |
 | Chrome Web Store | 📋 Pending | Publish to Chrome Web Store |
 | Firefox Add-ons | 📋 Pending | Publish to Firefox Add-ons |
+
+### Built-in Relay Server
+
+The `wh relay` command provides a self-contained relay server, eliminating dependency on external infrastructure.
+
+```bash
+# Run full relay (mailbox + transit)
+wh relay
+
+# Custom ports
+wh relay -p 5000 -t 5001
+
+# Configure clients to use your relay
+export WH_RELAY=ws://your-server:4000/v1
+export WH_TRANSIT=tcp:your-server:4001
+wh nc -l
+```
 
 #### Architecture
 
