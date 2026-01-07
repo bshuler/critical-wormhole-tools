@@ -1,9 +1,8 @@
 """Integration tests for multi-relay fallback functionality."""
 
-import pytest
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch
 
 
 class TestMultiRelayIntegration:
