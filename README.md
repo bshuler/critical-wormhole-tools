@@ -15,11 +15,11 @@
   <a href="https://codecov.io/gh/bshuler/critical-wormhole-tools">
     <img src="https://codecov.io/gh/bshuler/critical-wormhole-tools/branch/main/graph/badge.svg" alt="codecov">
   </a>
-  <a href="https://pypi.org/project/critical-wormhole/">
-    <img src="https://img.shields.io/pypi/v/critical-wormhole.svg" alt="PyPI version">
+  <a href="https://pypi.org/project/critical-wormhole-tools/">
+    <img src="https://img.shields.io/pypi/v/critical-wormhole-tools.svg" alt="PyPI version">
   </a>
-  <a href="https://pypi.org/project/critical-wormhole/">
-    <img src="https://img.shields.io/pypi/pyversions/critical-wormhole.svg" alt="Python versions">
+  <a href="https://pypi.org/project/critical-wormhole-tools/">
+    <img src="https://img.shields.io/pypi/pyversions/critical-wormhole-tools.svg" alt="Python versions">
   </a>
   <a href="https://github.com/bshuler/critical-wormhole-tools/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/bshuler/critical-wormhole-tools.svg" alt="License">
@@ -27,8 +27,8 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/critical-wormhole/">
-    <img src="https://img.shields.io/pypi/dm/critical-wormhole.svg" alt="Downloads">
+  <a href="https://pypi.org/project/critical-wormhole-tools/">
+    <img src="https://img.shields.io/pypi/dm/critical-wormhole-tools.svg" alt="Downloads">
   </a>
   <a href="https://github.com/bshuler/critical-wormhole-tools/stargazers">
     <img src="https://img.shields.io/github/stars/bshuler/critical-wormhole-tools.svg" alt="GitHub stars">
@@ -77,26 +77,26 @@
 ### Using pip (Recommended)
 
 ```bash
-pip install critical-wormhole
+pip install critical-wormhole-tools
 ```
 
 ### Using pipx (Isolated Environment)
 
 ```bash
-pipx install critical-wormhole
+pipx install critical-wormhole-tools
 ```
 
 ### Using Homebrew (macOS/Linux)
 
 ```bash
-brew tap criticalwormhole/tap
+brew tap bshuler/critical-wormhole
 brew install critical-wormhole
 ```
 
 ### Using Chocolatey (Windows)
 
 ```powershell
-choco install critical-wormhole
+choco install critical-wormhole-tools
 ```
 
 ### From Source
@@ -362,7 +362,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 <p align="center">
   <a href="https://github.com/bshuler/critical-wormhole-tools">GitHub</a> •
-  <a href="https://pypi.org/project/critical-wormhole/">PyPI</a> •
+  <a href="https://pypi.org/project/critical-wormhole-tools/">PyPI</a> •
   <a href="https://github.com/bshuler/critical-wormhole-tools/issues">Issues</a> •
   <a href="https://github.com/bshuler/critical-wormhole-tools/discussions">Discussions</a>
 </p>

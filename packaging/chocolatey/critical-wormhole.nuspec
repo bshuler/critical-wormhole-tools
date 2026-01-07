@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
-    <id>critical-wormhole</id>
+    <id>critical-wormhole-tools</id>
     <version>0.1.0</version>
     <title>Critical Wormhole Tools</title>
     <authors>Critical Wormhole Team</authors>
-    <owners>criticalwormhole</owners>
-    <licenseUrl>https://github.com/criticalwormhole/cwt/blob/main/LICENSE</licenseUrl>
-    <projectUrl>https://github.com/criticalwormhole/cwt</projectUrl>
-    <iconUrl>https://raw.githubusercontent.com/criticalwormhole/cwt/main/assets/logo.png</iconUrl>
+    <owners>bshuler</owners>
+    <licenseUrl>https://github.com/bshuler/critical-wormhole-tools/blob/main/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/bshuler/critical-wormhole-tools</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/bshuler/critical-wormhole-tools/main/assets/logo.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>
 Critical Wormhole Tools - Secure network utilities using Magic Wormhole code-based addressing.
@@ -24,7 +24,7 @@ Includes:
 No IP addresses, no port forwarding, no firewall rules. Just share a simple code like "7-guitar-sunset" and connect securely from anywhere.
     </description>
     <summary>Secure network tools with code-based addressing</summary>
-    <releaseNotes>https://github.com/criticalwormhole/cwt/releases</releaseNotes>
+    <releaseNotes>https://github.com/bshuler/critical-wormhole-tools/releases</releaseNotes>
     <copyright>Copyright 2024 Critical Wormhole Team</copyright>
     <tags>wormhole ssh sftp scp netcat security tunnel encrypted p2p</tags>
     <dependencies>

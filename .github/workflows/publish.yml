@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/critical-wormhole/
+      url: https://pypi.org/project/critical-wormhole-tools/
     permissions:
       id-token: write  # Required for trusted publishing
 

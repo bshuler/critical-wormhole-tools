@@ -1,16 +1,16 @@
 # Homebrew formula for Critical Wormhole Tools
-# To install: brew install criticalwormhole/tap/critical-wormhole
-# Or: brew tap criticalwormhole/tap && brew install critical-wormhole
+# To install: brew install bshuler/critical-wormhole/critical-wormhole
+# Or: brew tap bshuler/critical-wormhole && brew install critical-wormhole
 
 class CriticalWormhole < Formula
   include Language::Python::Virtualenv
 
   desc "Secure network utilities using Magic Wormhole code-based addressing"
-  homepage "https://github.com/criticalwormhole/cwt"
-  url "https://files.pythonhosted.org/packages/source/c/critical-wormhole/critical-wormhole-0.1.0.tar.gz"
+  homepage "https://github.com/bshuler/critical-wormhole-tools"
+  url "https://files.pythonhosted.org/packages/source/c/critical_wormhole_tools/critical_wormhole_tools-0.1.0.tar.gz"
   sha256 "PLACEHOLDER_SHA256"  # Update with actual SHA256 after PyPI release
   license "MIT"
-  head "https://github.com/criticalwormhole/cwt.git", branch: "main"
+  head "https://github.com/bshuler/critical-wormhole-tools.git", branch: "main"
 
   depends_on "python@3.12"
   depends_on "libsodium"

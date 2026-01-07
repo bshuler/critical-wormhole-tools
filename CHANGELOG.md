@@ -84,7 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - This CHANGELOG
 
 #### Packaging
-- PyPI package (`critical-wormhole`)
+- PyPI package (`critical-wormhole-tools`)
 - Homebrew formula template
 - Chocolatey package template
 - GitHub Actions CI/CD

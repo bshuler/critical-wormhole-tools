@@ -1,5 +1,5 @@
 [project]
-name = "critical-wormhole"
+name = "critical_wormhole_tools"
 version = "0.1.0"
 description = "Critical Wormhole Tools - Secure network utilities using Magic Wormhole code-based addressing"
 authors = [{name = "Critical Wormhole Team"}]

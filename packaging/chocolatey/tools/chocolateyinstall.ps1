@@ -6,11 +6,11 @@ $toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 $pipxInstalled = Get-Command pipx -ErrorAction SilentlyContinue
 
 if ($pipxInstalled) {
-    Write-Host "Installing critical-wormhole via pipx..."
-    pipx install critical-wormhole
+    Write-Host "Installing critical-wormhole-tools via pipx..."
+    pipx install critical-wormhole-tools
 } else {
-    Write-Host "Installing critical-wormhole via pip..."
-    pip install critical-wormhole
+    Write-Host "Installing critical-wormhole-tools via pip..."
+    pip install critical-wormhole-tools
 }
 
 Write-Host "Critical Wormhole Tools installed successfully!"
