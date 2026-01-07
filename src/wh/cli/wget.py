@@ -112,6 +112,7 @@ async def wget(
     manager = WormholeManager(
         relay_url=ctx.obj.get('relay'),
         transit_relay=ctx.obj.get('transit'),
+        code_length=ctx.obj.get('code_length', 2),
         on_status=(lambda m: status(f"[*] {m}")) if verbose > 0 else None,
     )
 

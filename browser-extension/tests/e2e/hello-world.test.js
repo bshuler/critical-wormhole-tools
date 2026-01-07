@@ -131,11 +131,14 @@ test.describe('Hello World via Wormhole', () => {
     userDataDir = mkdtempSync(path.join(tmpdir(), 'playwright-ext-'));
     console.log('User data dir:', userDataDir);
 
+    // Use headless mode by default, can be overridden with HEADFUL=1
+    const headless = !process.env.HEADFUL;
+
     // Launch browser with extension using system Chrome
     console.log('Launching browser with extension...');
     browserContext = await chromium.launchPersistentContext(userDataDir, {
       channel: 'chrome', // Use system Chrome instead of Playwright Chromium
-      headless: false,
+      headless: headless,
       args: [
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
@@ -146,7 +149,9 @@ test.describe('Hello World via Wormhole', () => {
         '--disable-background-networking',
         '--disable-default-apps',
         '--disable-sync',
-        '--no-first-run'
+        '--no-first-run',
+        // New headless mode supports extensions (Chrome 109+)
+        ...(headless ? ['--headless=new'] : [])
       ],
       timeout: 60000
     });

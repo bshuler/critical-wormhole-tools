@@ -8,7 +8,8 @@ const __dirname = path.dirname(__filename);
 export default {
   entry: {
     background: './src/background.js',
-    popup: './src/popup/popup.js'
+    popup: './src/popup/popup.js',
+    settings: './src/settings/settings.js'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -37,6 +38,8 @@ export default {
         { from: 'manifest.json', to: 'manifest.json' },
         { from: 'src/popup/popup.html', to: 'popup.html' },
         { from: 'src/popup/popup.css', to: 'popup.css' },
+        { from: 'src/settings/settings.html', to: 'settings.html' },
+        { from: 'src/settings/settings.css', to: 'settings.css' },
         { from: 'icons', to: 'icons', noErrorOnMissing: true }
       ]
     })

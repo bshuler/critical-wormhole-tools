@@ -404,6 +404,18 @@ Known hosts are stored in `~/.wh/known_hosts/`.
 | `wh alias list` | List all aliases | `wh alias list` |
 | `wh alias resolve` | Resolve alias to address | `wh alias resolve laptop` |
 
+### Relay Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `wh relay serve` | Run built-in relay server | `wh relay serve -p 4000 -t 4001` |
+| `wh relay list` | List configured relays | `wh relay list` |
+| `wh relay add` | Add relay configuration | `wh relay add work ws://... tcp:...` |
+| `wh relay remove` | Remove relay | `wh relay remove work` |
+| `wh relay set-default` | Set default relay | `wh relay set-default work` |
+| `wh relay share` | Share config via wormhole | `wh relay share work` |
+| `wh relay discover` | Find relays via mDNS | `wh relay discover --add` |
+
 ---
 
 ## How It Works
@@ -469,17 +481,87 @@ Make HTTP requests to internal APIs through a trusted proxy.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `WH_RELAY` | Mailbox relay URL | `ws://relay.magic-wormhole.io:4000/v1` |
+| `WH_RELAY` | Mailbox relay URL or name | `public` |
 | `WH_TRANSIT` | Transit relay | `tcp:transit.magic-wormhole.io:4001` |
+| `WH_CODE_LENGTH` | Number of words in codes | `2` |
 | `WH_SSH_PASSWORD` | SSH password (avoid prompts) | - |
 
-### Custom Relay
+### Code Length
 
-For privacy or performance, run your own relay:
+By default, wormhole codes have 2 words (~23 bits of entropy). For higher security, use longer codes:
 
 ```bash
-# Use custom relay
-wh --relay ws://my-relay.example.com:4000/v1 nc -l
+# Use 4-word codes (~39 bits of entropy)
+wh -c 4 nc -l
+# Output: Listening on code: 7-guitar-sunset-castle-thunder
+
+# Or set via environment
+export WH_CODE_LENGTH=4
+wh nc -l
+```
+
+### Multi-Relay Configuration
+
+Configure multiple relays for different use cases (work, home, private):
+
+```bash
+# List configured relays
+wh relay list
+
+# Add a private relay
+wh relay add work ws://work-relay.example.com:4000/v1 tcp:work-relay.example.com:4001
+
+# Add with description
+wh relay add home ws://192.168.1.10:4000/v1 tcp:192.168.1.10:4001 -d "Home network"
+
+# Set default relay
+wh relay set-default work
+
+# Use a specific relay
+wh --relay work nc -l
+wh -r home ssh laptop
+```
+
+### Share Relay Configuration
+
+Easily share relay settings with team members via wormhole code:
+
+```bash
+# Sender: Share relay config
+wh relay share work
+# Output: Share this relay config with:
+#   wh relay share NEWNAME --receive --code 7-guitar-sunset
+
+# Receiver: Import relay config
+wh relay share corp --receive --code 7-guitar-sunset
+```
+
+### Running Your Own Relay
+
+For privacy or performance, run your own relay server:
+
+```bash
+# Run built-in relay server
+wh relay serve
+
+# Or with custom ports
+wh relay serve -p 5000 -t 5001
+
+# Output shows how to configure clients
+```
+
+For production deployment with Docker, nginx, or from source, see [Self-Hosting Relay](#self-hosting-relay).
+
+### Discover Local Relays
+
+Find relays on your local network via mDNS/Bonjour:
+
+```bash
+# Discover relays (requires zeroconf package)
+wh relay discover
+
+# Discover and add to config
+wh relay discover --add
 ```
 
 ### Data Directory
@@ -488,6 +570,7 @@ WNS stores data in `~/.wh/`:
 
 ```
 ~/.wh/
+├── relays.yaml         # Multi-relay configuration
 ├── identity/           # WNS identities (keypairs)
 │   └── <address>/
 │       ├── private.key
@@ -547,7 +630,11 @@ mypy src
 - [x] **wh tunnel**: SSH-style port forwarding
 - [x] **wh proxy**: SOCKS5 proxy through wormhole
 - [x] **wh rsync**: Efficient file synchronization
-- [ ] **Browser Extension**: Browse wormhole-hosted sites in Chrome/Firefox
+- [x] **Built-in Relay**: Self-contained relay server (`wh relay serve`)
+- [x] **Multi-Relay Config**: Configure multiple relays (`~/.wh/relays.yaml`)
+- [x] **Code Length**: Configurable code entropy (`-c 4` for 4-word codes)
+- [x] **Browser Extension**: Chrome extension for browsing wh:// URLs
+- [ ] **Relay-Scoped WNS**: Privacy-preserving namespace encryption
 - [ ] **Web Server Integration**: Apache/Nginx/HAProxy wormhole modules
 
 See [ROADMAP.md](ROADMAP.md) for detailed plans.

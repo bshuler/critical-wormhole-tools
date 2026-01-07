@@ -141,10 +141,21 @@ addressInput.addEventListener('keypress', (e) => {
 });
 
 /**
+ * Open settings page
+ */
+function openSettings() {
+  chrome.runtime.openOptionsPage();
+}
+
+/**
  * Event listeners
  */
 refreshBtn.addEventListener('click', refreshStatus);
 goBtn.addEventListener('click', navigateToAddress);
+document.getElementById('settingsLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  openSettings();
+});
 
 /**
  * Initialize popup

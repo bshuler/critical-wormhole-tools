@@ -8,8 +8,27 @@ server addresses even though wormhole codes are single-use.
 Address format: wh://a7b3c9d2e1f4g5h6.wns
 
 The address is derived from: base32(sha256(ed25519_public_key)[:16])
+
+Namespace encryption allows relay-scoped namespaces where DHT entries
+are encrypted with keys derived from the relay URL, providing privacy
+for organizations with private relays.
 """
 
 from wh.wns.identity import WNSIdentity, WNSIdentityStore
+from wh.wns.namespace import (
+    NamespaceConfig,
+    MultiNamespaceResolver,
+    derive_namespace_key,
+    encrypt_for_namespace,
+    decrypt_for_namespace,
+)
 
-__all__ = ["WNSIdentity", "WNSIdentityStore"]
+__all__ = [
+    "WNSIdentity",
+    "WNSIdentityStore",
+    "NamespaceConfig",
+    "MultiNamespaceResolver",
+    "derive_namespace_key",
+    "encrypt_for_namespace",
+    "decrypt_for_namespace",
+]

@@ -6,6 +6,8 @@
   "author": "Critical Wormhole Team",
   "homepage_url": "https://github.com/bshuler/critical-wormhole-tools",
 
+  "options_page": "settings.html",
+
   "permissions": [
     "proxy",
     "storage",

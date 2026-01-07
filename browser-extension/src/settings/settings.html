@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=600">
+  <title>Wormhole Settings</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Wormhole Settings</h1>
+      <a href="popup.html" class="back-link">&larr; Back</a>
+    </header>
+
+    <main>
+      <!-- Relay Configuration Section -->
+      <section class="section">
+        <h2>Relay Servers</h2>
+        <p class="description">
+          Configure relay servers for wormhole connections. The default relay uses the
+          public Magic Wormhole infrastructure. Add private relays for enhanced privacy.
+        </p>
+
+        <div class="relay-list" id="relayList">
+          <!-- Relays will be populated here -->
+        </div>
+
+        <button class="btn btn-secondary" id="addRelayBtn">+ Add Relay</button>
+      </section>
+
+      <!-- Code Length Section -->
+      <section class="section">
+        <h2>Security</h2>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <label for="codeLength">Wormhole Code Length</label>
+            <p class="setting-description">
+              Number of words in generated codes. More words = more security.
+              Default: 2 words (~23 bits entropy)
+            </p>
+          </div>
+          <select id="codeLength">
+            <option value="2">2 words (default)</option>
+            <option value="3">3 words</option>
+            <option value="4">4 words (recommended)</option>
+            <option value="5">5 words</option>
+            <option value="6">6 words</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Daemon Section -->
+      <section class="section">
+        <h2>Daemon</h2>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <label for="daemonPort">Daemon Port</label>
+            <p class="setting-description">
+              Local port for the wormhole daemon. Default: 9475
+            </p>
+          </div>
+          <input type="number" id="daemonPort" min="1024" max="65535" value="9475">
+        </div>
+      </section>
+
+      <!-- Advanced Section -->
+      <section class="section collapsible">
+        <h2 class="section-header" id="advancedToggle">
+          Advanced
+          <span class="toggle-icon">&#9660;</span>
+        </h2>
+        <div class="section-content" id="advancedContent" style="display: none;">
+          <div class="setting-row">
+            <div class="setting-info">
+              <label>
+                <input type="checkbox" id="debugMode">
+                Enable Debug Logging
+              </label>
+              <p class="setting-description">
+                Show detailed logs in the browser console for troubleshooting.
+              </p>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <label>
+                <input type="checkbox" id="autoConnect">
+                Auto-connect to Known Addresses
+              </label>
+              <p class="setting-description">
+                Automatically establish connections to trusted WNS addresses.
+              </p>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn btn-danger" id="resetBtn">Reset to Defaults</button>
+            <button class="btn btn-secondary" id="exportBtn">Export Settings</button>
+            <button class="btn btn-secondary" id="importBtn">Import Settings</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Wormhole Browser Extension v0.4.0</p>
+    </footer>
+  </div>
+
+  <!-- Add/Edit Relay Modal -->
+  <div class="modal" id="relayModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Add Relay</h3>
+        <button class="close-btn" id="closeModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="relayName">Name</label>
+          <input type="text" id="relayName" placeholder="e.g., work, home, private">
+        </div>
+        <div class="form-group">
+          <label for="relayMailbox">Mailbox URL</label>
+          <input type="text" id="relayMailbox" placeholder="ws://server:4000/v1">
+        </div>
+        <div class="form-group">
+          <label for="relayTransit">Transit URL</label>
+          <input type="text" id="relayTransit" placeholder="tcp:server:4001">
+        </div>
+        <div class="form-group">
+          <label for="relayDescription">Description (optional)</label>
+          <input type="text" id="relayDescription" placeholder="My private relay">
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="relayDefault">
+            Set as default relay
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="cancelRelayBtn">Cancel</button>
+        <button class="btn btn-primary" id="saveRelayBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

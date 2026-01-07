@@ -48,13 +48,46 @@ def async_command(f: Callable) -> Callable:
     return wrapper
 
 
+def resolve_relay(relay_option: str) -> tuple:
+    """
+    Resolve relay option to mailbox and transit URLs.
+
+    Args:
+        relay_option: Either a relay name from config, or a URL
+
+    Returns:
+        Tuple of (mailbox_url, transit_url)
+    """
+    from wh.relay.config import get_relay_manager
+
+    if relay_option is None:
+        # Use default relay from config
+        manager = get_relay_manager()
+        relay_config = manager.get_default_relay()
+        return relay_config.mailbox_url, relay_config.transit_url
+
+    # Check if it's a URL (contains ://)
+    if '://' in relay_option:
+        # It's a URL, use as-is (transit will use default)
+        return relay_option, None
+
+    # Check if it's a configured relay name
+    manager = get_relay_manager()
+    relay_config = manager.get_relay(relay_option)
+    if relay_config:
+        return relay_config.mailbox_url, relay_config.transit_url
+
+    # Not a known name, treat as URL
+    return relay_option, None
+
+
 @click.group()
 @click.version_option(version=wh.__version__, prog_name="wh")
 @click.option(
-    '--relay',
+    '--relay', '-r',
     envvar='WH_RELAY',
     default=None,
-    help='Custom mailbox relay URL'
+    help='Relay name (from config) or mailbox URL'
 )
 @click.option(
     '--transit',
@@ -63,12 +96,19 @@ def async_command(f: Callable) -> Callable:
     help='Custom transit relay URL'
 )
 @click.option(
+    '-c', '--code-length',
+    envvar='WH_CODE_LENGTH',
+    default=2,
+    type=int,
+    help='Number of words in wormhole code (default: 2, e.g., 7-guitar-sunset)'
+)
+@click.option(
     '-v', '--verbose',
     count=True,
     help='Increase verbosity (-v for info, -vv for debug)'
 )
 @click.pass_context
-def cli(ctx: click.Context, relay: str, transit: str, verbose: int) -> None:
+def cli(ctx: click.Context, relay: str, transit: str, code_length: int, verbose: int) -> None:
     """
     wh - Wormhole Tools
 
@@ -88,7 +128,19 @@ def cli(ctx: click.Context, relay: str, transit: str, verbose: int) -> None:
       tunnel  SSH-style port forwarding through wormhole
       proxy   SOCKS5 proxy through wormhole
       rsync   Incremental file sync through wormhole
+      relay   Manage relays and run relay server
       daemon  Local daemon for browser extension
+
+    \b
+    Relay Configuration:
+      Relays can be specified by name or URL:
+        wh --relay myrelay nc -l   # Use configured relay
+        wh --relay ws://server:4000/v1 nc -l  # Use URL directly
+
+      Manage relays with:
+        wh relay list              # Show configured relays
+        wh relay add myrelay URL   # Add a relay
+        wh relay set-default NAME  # Set default relay
 
     \b
     Examples:
@@ -101,8 +153,17 @@ def cli(ctx: click.Context, relay: str, transit: str, verbose: int) -> None:
       wh ssh 7-guitar-sunset  # Local: SSH to remote via code
     """
     ctx.ensure_object(dict)
-    ctx.obj['relay'] = relay
-    ctx.obj['transit'] = transit
+
+    # Resolve relay option to URLs
+    mailbox_url, transit_url = resolve_relay(relay)
+
+    # Transit can be overridden
+    if transit is not None:
+        transit_url = transit
+
+    ctx.obj['relay'] = mailbox_url
+    ctx.obj['transit'] = transit_url
+    ctx.obj['code_length'] = code_length
     ctx.obj['verbose'] = verbose
 
 

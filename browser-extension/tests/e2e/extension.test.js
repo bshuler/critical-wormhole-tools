@@ -17,15 +17,20 @@ const extensionPath = path.resolve(__dirname, '../../dist');
 async function createExtensionContext() {
   const userDataDir = mkdtempSync(path.join(tmpdir(), 'playwright-ext-'));
 
+  // Use headless mode by default, can be overridden with HEADFUL=1
+  const headless = !process.env.HEADFUL;
+
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chrome',
-    headless: false,
+    headless: headless,
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      '--no-first-run'
+      '--no-first-run',
+      // New headless mode supports extensions (Chrome 109+)
+      ...(headless ? ['--headless=new'] : [])
     ],
     timeout: 60000
   });

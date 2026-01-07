@@ -219,11 +219,14 @@ test.describe('Real-World Integration Test', () => {
     userDataDir = mkdtempSync(path.join(tmpdir(), 'playwright-integration-'));
     console.log('User data dir:', userDataDir);
 
+    // Use headless mode by default, can be overridden with HEADFUL=1
+    const headless = !process.env.HEADFUL;
+
     // Launch browser with extension
     console.log('Launching browser with extension...');
     browserContext = await chromium.launchPersistentContext(userDataDir, {
       channel: 'chrome',
-      headless: false,
+      headless: headless,
       args: [
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
@@ -231,7 +234,9 @@ test.describe('Real-World Integration Test', () => {
         '--disable-setuid-sandbox',
         '--disable-gpu',
         '--disable-dev-shm-usage',
-        '--no-first-run'
+        '--no-first-run',
+        // New headless mode supports extensions (Chrome 109+)
+        ...(headless ? ['--headless=new'] : [])
       ],
       timeout: 60000
     });
@@ -692,14 +697,19 @@ test.describe('Extension Standalone Test', () => {
 
     userDataDir = mkdtempSync(path.join(tmpdir(), 'playwright-standalone-'));
 
+    // Use headless mode by default, can be overridden with HEADFUL=1
+    const headless = !process.env.HEADFUL;
+
     browserContext = await chromium.launchPersistentContext(userDataDir, {
       channel: 'chrome',
-      headless: false,
+      headless: headless,
       args: [
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
         '--no-sandbox',
-        '--no-first-run'
+        '--no-first-run',
+        // New headless mode supports extensions (Chrome 109+)
+        ...(headless ? ['--headless=new'] : [])
       ],
       timeout: 60000
     });

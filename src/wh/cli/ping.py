@@ -295,6 +295,8 @@ def ping(
         raise click.UsageError("CODE is required when not in listen mode")
 
     relay_url = ctx.obj.get("relay") if ctx.obj else None
+    transit_relay = ctx.obj.get("transit") if ctx.obj else None
+    code_length = ctx.obj.get("code_length", 2) if ctx.obj else 2
 
     def status(msg: str) -> None:
         if verbose or not msg.startswith(" "):
@@ -303,6 +305,8 @@ def ping(
     async def run_ping():
         manager = WormholeManager(
             relay_url=relay_url,
+            transit_relay=transit_relay,
+            code_length=code_length,
             on_status=status if verbose else None,
         )
 
