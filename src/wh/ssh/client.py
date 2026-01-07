@@ -8,8 +8,14 @@ through the wormhole dilation subchannel.
 from typing import Optional, List, Any
 import asyncio
 import sys
-import tty
-import termios
+
+# tty/termios only available on Unix-like systems
+try:
+    import tty
+    import termios
+    HAS_TTY = True
+except ImportError:
+    HAS_TTY = False
 
 import asyncssh
 
@@ -122,14 +128,15 @@ class WormholeSSHClient:
         except Exception:
             cols, rows = 80, 24
 
-        # Save terminal settings
+        # Save terminal settings (Unix only)
         old_settings = None
-        stdin_fd = sys.stdin.fileno()
+        stdin_fd = sys.stdin.fileno() if HAS_TTY else None
 
         try:
-            # Set terminal to raw mode for proper key handling
-            old_settings = termios.tcgetattr(stdin_fd)
-            tty.setraw(stdin_fd)
+            # Set terminal to raw mode for proper key handling (Unix only)
+            if HAS_TTY and stdin_fd is not None:
+                old_settings = termios.tcgetattr(stdin_fd)
+                tty.setraw(stdin_fd)
 
             # Create process with PTY
             async with self._conn.create_process(
@@ -145,8 +152,8 @@ class WormholeSSHClient:
                 )
 
         finally:
-            # Restore terminal settings
-            if old_settings:
+            # Restore terminal settings (Unix only)
+            if HAS_TTY and old_settings and stdin_fd is not None:
                 termios.tcsetattr(stdin_fd, termios.TCSADRAIN, old_settings)
 
     async def _pump_stdin(self, writer: Any) -> None:

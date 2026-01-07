@@ -8,9 +8,15 @@ from `wh ssh` clients.
 from typing import Optional, Dict, Any
 import asyncio
 import os
-import pty
 import subprocess
-import pwd
+
+# pty/pwd only available on Unix-like systems
+try:
+    import pty
+    import pwd
+    HAS_PTY = True
+except ImportError:
+    HAS_PTY = False
 
 import asyncssh
 
@@ -290,6 +296,12 @@ class SSHServerHandler:
 
     async def _run_shell(self, process: asyncssh.SSHServerProcess) -> None:
         """Run an interactive shell."""
+        if not HAS_PTY:
+            # PTY not available (Windows) - run simple shell fallback
+            process.stderr.write("Interactive shell not supported on this platform\n")
+            process.exit(1)
+            return
+
         try:
             shell = pwd.getpwuid(os.getuid()).pw_shell
         except Exception:
