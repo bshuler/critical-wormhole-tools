@@ -1,0 +1,12 @@
+{
+  "name": "com.criticalwormhole.daemon",
+  "description": "Wormhole Daemon Native Messaging Host",
+  "path": "/usr/local/bin/wh-native-host",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://EXTENSION_ID_HERE/"
+  ],
+  "allowed_extensions": [
+    "wormhole-browser@critical-wormhole.tools"
+  ]
+}

@@ -88,6 +88,7 @@ def cli(ctx: click.Context, relay: str, transit: str, verbose: int) -> None:
       tunnel  SSH-style port forwarding through wormhole
       proxy   SOCKS5 proxy through wormhole
       rsync   Incremental file sync through wormhole
+      daemon  Local daemon for browser extension
 
     \b
     Examples:
@@ -119,6 +120,7 @@ from wh.cli.tunnel import tunnel
 from wh.cli.proxy import proxy
 from wh.cli.rsync import rsync
 from wh.cli.serve import serve
+from wh.cli.daemon import daemon
 from wh.wns.cli import identity, alias
 
 cli.add_command(nc)
@@ -133,6 +135,7 @@ cli.add_command(tunnel)
 cli.add_command(proxy)
 cli.add_command(rsync)
 cli.add_command(serve)
+cli.add_command(daemon)
 cli.add_command(identity)
 cli.add_command(alias)
 

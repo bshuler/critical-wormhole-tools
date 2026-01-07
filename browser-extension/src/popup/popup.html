@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=320">
+  <title>Wormhole Browser</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <h1>Wormhole Browser</h1>
+    <div class="version">v0.4.0</div>
+  </div>
+
+  <div class="status">
+    <div class="status-indicator" id="statusIndicator"></div>
+    <div class="status-text">
+      <div class="label">Daemon Status</div>
+      <div class="value" id="statusValue">Checking...</div>
+    </div>
+    <button id="refreshBtn" title="Refresh status">&#8635;</button>
+  </div>
+
+  <div class="daemon-warning" id="daemonWarning" style="display: none;">
+    Start the wormhole daemon with:<br>
+    <code>wh daemon start</code>
+  </div>
+
+  <div class="content">
+    <div class="section">
+      <div class="section-title">Navigate to Address</div>
+      <div class="input-group">
+        <input type="text" id="addressInput" placeholder="wh://address.wns or alias">
+        <button id="goBtn">Go</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Active Connections</div>
+      <ul class="connections" id="connectionsList">
+        <li class="empty-state">
+          <div class="icon">&#128268;</div>
+          <div>No active connections</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/bshuler/critical-wormhole-tools" target="_blank">Documentation</a>
+    <a href="#" id="settingsLink">Settings</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -215,18 +215,30 @@ wh serve --ssh --identity <address>     # Use specific identity
 
 ---
 
-## Phase 4: Browser Integration (v0.4.0)
+## Phase 4: Browser Integration (v0.4.0) 🚧 IN PROGRESS
 
 ### Wormhole Browser Extension
 
 A Chrome/Firefox extension that allows browsing websites hosted on wormhole addresses.
 
-#### Features
+#### Implemented Features
 
-1. **URL Bar Integration**: Navigate to `wh://mysite.wh` directly
-2. **Automatic Proxy**: Routes `wh://` URLs through local wormhole proxy
-3. **Connection Status**: Shows connection state in toolbar
-4. **Bookmarks**: Save wormhole sites like regular bookmarks
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Extension manifest | ✅ Complete | Chrome MV3 + Firefox WebExtensions |
+| Background service worker | ✅ Complete | Handles proxy configuration |
+| Popup UI | ✅ Complete | Status display, address navigation |
+| `wh daemon` command | ✅ Complete | Local HTTP API server |
+| PAC proxy configuration | ✅ Complete | Routes `wh://` URLs through daemon |
+| Native messaging host | ✅ Complete | Bridge for tighter integration |
+
+#### Pending Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Full HTTP proxy | 📋 Pending | Complete request proxying through wormhole |
+| Chrome Web Store | 📋 Pending | Publish to Chrome Web Store |
+| Firefox Add-ons | 📋 Pending | Publish to Firefox Add-ons |
 
 #### Architecture
 
@@ -235,8 +247,8 @@ A Chrome/Firefox extension that allows browsing websites hosted on wormhole addr
 │                        Browser                                   │
 ├─────────────────────────────────────────────────────────────────┤
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐  │
-│  │  Extension  │◄──►│   Native    │◄──►│   wh daemon         │  │
-│  │  (JS/WASM)  │    │   Messaging │    │   (Local service)   │  │
+│  │  Extension  │◄──►│   HTTP API  │◄──►│   wh daemon         │  │
+│  │  (popup.js) │    │   :9475     │    │   (wh daemon start) │  │
 │  └─────────────┘    └─────────────┘    └─────────────────────┘  │
 │        │                                         │              │
 │        │         ┌─────────────┐                │              │
@@ -250,31 +262,27 @@ A Chrome/Firefox extension that allows browsing websites hosted on wormhole addr
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### User Experience
+#### Usage
 
-```
-1. Install extension from Chrome Web Store / Firefox Add-ons
-2. Extension prompts to install native helper (wh daemon)
-3. Navigate to wh://mysite.wh
-4. Extension resolves name, establishes wormhole, proxies HTTP
-5. Website loads in browser!
+```bash
+# Start the daemon
+wh daemon start
+
+# Check status
+wh daemon status
+
+# Load extension in browser (developer mode)
+# Navigate to wh://address.wns
 ```
 
-#### Technical Implementation
+#### Daemon API Endpoints
 
-```javascript
-// background.js - Service Worker
-chrome.webRequest.onBeforeRequest.addListener(
-  (details) => {
-    if (details.url.startsWith('wh://')) {
-      // Route through local wormhole proxy
-      return { redirectUrl: `http://localhost:${WH_PROXY_PORT}/${details.url}` };
-    }
-  },
-  { urls: ['wh://*/*'] },
-  ['blocking']
-);
-```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/status` | GET | Check daemon status |
+| `/resolve` | POST | Resolve WNS address to ephemeral code |
+| `/connect` | POST | Establish wormhole connection |
+| `/browse/<url>` | GET | Proxy HTTP request through wormhole |
 
 ---
 
@@ -447,7 +455,7 @@ wh --namespace=engineering ssh team-server
 | Core Tools | v0.1.0 | Q1 2024 | ✅ Complete |
 | Additional Network Tools | v0.2.0 | Q2 2024 | ✅ Complete |
 | Wormhole Name Service | v0.3.0 | Q3 2024 | ✅ Complete |
-| Browser Extension | v0.4.0 | Q4 2024 | 📋 Design |
+| Browser Extension | v0.4.0 | Q4 2024 | 🚧 In Progress |
 | Web Server Integration | v0.5.0 | Q1 2025 | 📋 Design |
 | Enterprise Features | v1.0.0 | Q2 2025 | 📋 Design |
 
