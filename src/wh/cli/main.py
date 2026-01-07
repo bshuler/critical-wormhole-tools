@@ -84,6 +84,10 @@ def cli(ctx: click.Context, relay: str, transit: str, verbose: int) -> None:
       sftp    Interactive file transfer through wormhole
       curl    HTTP requests through wormhole
       wget    Download files through wormhole
+      ping    Measure latency through wormhole
+      tunnel  SSH-style port forwarding through wormhole
+      proxy   SOCKS5 proxy through wormhole
+      rsync   Incremental file sync through wormhole
 
     \b
     Examples:
@@ -110,6 +114,12 @@ from wh.cli.scp import scp
 from wh.cli.sftp import sftp
 from wh.cli.curl import curl
 from wh.cli.wget import wget
+from wh.cli.ping import ping
+from wh.cli.tunnel import tunnel
+from wh.cli.proxy import proxy
+from wh.cli.rsync import rsync
+from wh.cli.serve import serve
+from wh.wns.cli import identity, alias
 
 cli.add_command(nc)
 cli.add_command(listen)
@@ -118,6 +128,13 @@ cli.add_command(scp)
 cli.add_command(sftp)
 cli.add_command(curl)
 cli.add_command(wget)
+cli.add_command(ping)
+cli.add_command(tunnel)
+cli.add_command(proxy)
+cli.add_command(rsync)
+cli.add_command(serve)
+cli.add_command(identity)
+cli.add_command(alias)
 
 
 if __name__ == "__main__":

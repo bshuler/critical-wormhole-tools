@@ -57,6 +57,10 @@ async def sftp(
         # Batch mode
         $ wh sftp -b commands.txt 7-guitar-sunset
 
+        # Using WNS address (persistent naming)
+        $ wh sftp wh://abc123def456.wns
+        $ wh sftp user@wh://abc123def456.wns
+
     \b
     Available commands:
         ls [path]       List directory

@@ -66,6 +66,9 @@ async def nc(
 
         # Now type on either side - text flows both ways
 
+        # Connect using WNS address (persistent naming)
+        $ wh nc wh://abc123def456.wns
+
     \b
     Persistent mode (-k):
         # Terminal 1: Listen for multiple connections

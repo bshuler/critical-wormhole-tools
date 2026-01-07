@@ -2,13 +2,20 @@
 WormholeManager - Central abstraction for Magic Wormhole connections.
 
 Manages wormhole lifecycle, code allocation, and dilation for streaming.
+Supports both ephemeral wormhole codes and persistent WNS addresses.
 """
 
+import logging
 from typing import Optional, Callable, Any, Tuple
 import asyncio
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from wormhole import create
+
+from wh.wns.identity import is_wns_address, parse_wns_address
+
+
+logger = logging.getLogger(__name__)
 
 
 class WormholeManager:
@@ -64,6 +71,7 @@ class WormholeManager:
 
         self._wormhole: Optional[Any] = None
         self._code: Optional[str] = None
+        self._wns_address: Optional[str] = None  # Original WNS address if used
         self._dilated: bool = False
         self._dilated_wormhole: Optional[Any] = None  # DilatedWormhole object
         self._versions: Optional[dict] = None
@@ -82,6 +90,34 @@ class WormholeManager:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             return loop
+
+    async def _resolve_wns_address(self, address: str) -> str:
+        """
+        Resolve a WNS address to a wormhole code.
+
+        Args:
+            address: WNS address (e.g., "wh://abc123.wns" or "abc123")
+
+        Returns:
+            The wormhole code to connect with.
+
+        Raises:
+            ValueError: If address cannot be resolved.
+        """
+        from wh.wns.discovery import Discovery
+
+        self._status(f"Resolving WNS address: {address}")
+
+        async with Discovery() as discovery:
+            ad = await discovery.lookup_and_cache(address)
+
+            if not ad:
+                raise ValueError(f"Could not resolve WNS address: {address}")
+
+            self._status(f"Resolved to code: {ad.code}")
+            logger.info(f"WNS {address} -> {ad.code}")
+
+            return ad.code
 
     async def _deferred_to_future(self, d: defer.Deferred) -> Any:
         """Convert a Twisted Deferred to an asyncio Future."""
@@ -163,13 +199,38 @@ class WormholeManager:
         yield defer.succeed(None)
         return None
 
-    async def create_and_set_code(self, code: str) -> None:
+    async def create_and_set_code(self, code_or_address: str) -> None:
         """
-        Create wormhole with existing code (responder side).
+        Create wormhole with existing code, WNS address, or alias (responder side).
+
+        Accepts:
+        - Regular wormhole codes: "7-guitar-sunset"
+        - WNS addresses: "wh://abc123.wns"
+        - Local aliases: "laptop" (if defined via `wh alias add`)
+
+        WNS addresses and aliases are automatically resolved to wormhole codes.
 
         Args:
-            code: The wormhole code to connect with.
+            code_or_address: The wormhole code, WNS address, or alias to connect with.
         """
+        from wh.wns.aliases import AliasStore
+
+        code = code_or_address
+
+        # First, check if it's a local alias
+        store = AliasStore()
+        resolved = store.resolve(code_or_address)
+        if resolved:
+            self._status(f"Resolved alias '{code_or_address}' -> {resolved}")
+            code_or_address = resolved
+
+        # Check if this is a WNS address (or was resolved to one)
+        if is_wns_address(code_or_address):
+            self._wns_address = code_or_address
+            code = await self._resolve_wns_address(code_or_address)
+        else:
+            code = code_or_address
+
         d = self.create_and_set_code_deferred(code)
         return await self._deferred_to_future(d)
 
@@ -249,6 +310,11 @@ class WormholeManager:
         return self._code
 
     @property
+    def wns_address(self) -> Optional[str]:
+        """Get the WNS address if one was used to connect."""
+        return self._wns_address
+
+    @property
     def is_dilated(self) -> bool:
         """Check if wormhole has been dilated."""
         return self._dilated
@@ -299,6 +365,7 @@ class WormholeManager:
             self._dilated = False
             self._dilated_wormhole = None
             self._code = None
+            self._wns_address = None
             self._status("Wormhole closed")
 
         return None

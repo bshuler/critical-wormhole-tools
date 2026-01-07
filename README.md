@@ -65,6 +65,7 @@
 ### Key Features
 
 - **No IP addresses** - Use memorable codes like `7-guitar-sunset`
+- **Persistent addresses** - WNS identities like `wh://laptop.wns` that never change
 - **No port forwarding** - Works through NAT and firewalls automatically
 - **End-to-end encrypted** - PAKE-based key agreement, no trusted third parties
 - **Cross-platform** - Works on Linux, macOS, and Windows
@@ -189,7 +190,176 @@ wh wget --code 2-ocean-breeze https://example.com/large-file.zip
 
 ---
 
+## Wormhole Name Service (WNS)
+
+Regular wormhole codes like `7-guitar-sunset` are single-use—they're consumed when you connect. **WNS** provides persistent, self-certifying addresses that never change, even when the underlying wormhole code refreshes.
+
+```
+┌─────────────────┐                              ┌─────────────────┐
+│   Your Machine  │                              │  Remote Machine │
+│                 │    "wh://a7b3c9d2e1f4.wns"   │                 │
+│   wh ssh ───────┼──────────────────────────────┼─────── wh serve │
+│                 │   Persistent Identity        │        --ssh    │
+└─────────────────┘   Auto-refreshing Codes      └─────────────────┘
+```
+
+### How WNS Works
+
+1. **Generate an identity** - Creates an Ed25519 keypair; the address is derived from the public key
+2. **Start a persistent server** - Automatically generates and publishes ephemeral codes
+3. **Clients look up the address** - Discover the current code via DHT, verify the signature
+4. **Connect using the code** - Same PAKE security as regular wormhole connections
+
+### Creating an Identity
+
+```bash
+# Generate a new WNS identity
+wh identity create
+# Output: Created identity: wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+
+# Generate with a local name
+wh identity create --name "my-server"
+
+# List all identities
+wh identity list
+
+# Show details for an identity
+wh identity show a7b3c9d2e1f4g5h6i7j8k9l0m1
+
+# Export public key (for sharing)
+wh identity export a7b3c9d2e1f4g5h6i7j8k9l0m1
+```
+
+### Starting a Persistent Server
+
+```bash
+# Start SSH server with WNS identity
+wh serve --ssh
+# Output:
+# Using identity: wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+# Publishing to DHT: 7-guitar-sunset
+# [Client connected]
+# [Client disconnected]
+# Publishing to DHT: 3-castle-thunder  ← New code, same address!
+
+# With a specific identity
+wh serve --ssh --identity a7b3c9d2e1f4g5h6i7j8k9l0m1
+```
+
+### Connecting to a WNS Address
+
+All client commands accept WNS addresses:
+
+```bash
+# SSH
+wh ssh wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+
+# SCP
+wh scp wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns:/path/file ./local/
+
+# SFTP
+wh sftp wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+
+# With username
+wh ssh admin@wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+```
+
+### Naming Your Addresses
+
+WNS supports three types of human-readable names:
+
+#### 1. Local Aliases (Petnames)
+
+SSH-config style aliases stored on your machine:
+
+```bash
+# Add an alias
+wh alias add laptop wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+
+# Add with default username
+wh alias add work-server wh://xyz789.wns --username admin
+
+# Now use the alias instead of the full address
+wh ssh laptop
+wh scp laptop:/file ./
+
+# List all aliases
+wh alias list
+
+# Remove an alias
+wh alias remove laptop
+```
+
+#### 2. Scoped Names (Publisher-Controlled)
+
+Names controlled by the identity owner, namespaced to prevent collisions:
+
+```bash
+# Set a scoped name for your identity
+wh identity set-name a7b3c9d2e1f4g5h6i7j8k9l0m1 laptop
+
+# The server now advertises as:
+# wh://laptop.a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+
+# Clients can connect using either:
+wh ssh wh://laptop.a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+wh ssh wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns
+```
+
+#### 3. Global Names (First-Come-First-Served)
+
+Short, memorable names registered in the DHT:
+
+```bash
+# Claim a global name (links to your identity)
+wh identity claim-name my-laptop a7b3c9d2e1f4g5h6i7j8k9l0m1
+
+# Now anyone can connect via:
+wh ssh wh://my-laptop.wns
+
+# List your claimed names
+wh identity list-names
+
+# Release a name
+wh identity release-name my-laptop
+```
+
+**Global Name Rules:**
+- First-come-first-served (no central authority)
+- Claims expire after 7 days if not renewed
+- Reserved names: `wh`, `wns`, `admin`, `root`, `localhost`, etc.
+- Cannot start with a digit followed by a dash (avoids confusion with wormhole codes)
+
+### Name Resolution Order
+
+When you connect, names are resolved in this order:
+
+1. **Local aliases** - Check `~/.wh/aliases.json`
+2. **Global names** - Look up in DHT (for `wh://name.wns` format)
+3. **Scoped names** - Parse `name.address.wns` format
+4. **Full addresses** - Use directly
+
+### Trust Model (TOFU)
+
+WNS uses Trust-On-First-Use, similar to SSH:
+
+```bash
+# First connection - public key is saved
+wh ssh wh://a7b3c9d2e1f4.wns
+# Output: Adding a7b3c9d2e1f4 to known hosts (TOFU)
+
+# Subsequent connections - key is verified
+wh ssh wh://a7b3c9d2e1f4.wns
+# If key changed: WARNING: Public key mismatch! Possible impersonation attack.
+```
+
+Known hosts are stored in `~/.wh/known_hosts/`.
+
+---
+
 ## Commands Reference
+
+### Core Commands
 
 | Command | Description | Example |
 |---------|-------------|---------|
@@ -201,6 +371,38 @@ wh wget --code 2-ocean-breeze https://example.com/large-file.zip
 | `wh sftp` | Interactive SFTP session | `wh sftp 3-castle-thunder` |
 | `wh curl` | HTTP requests through proxy | `wh curl --code X http://...` |
 | `wh wget` | Download files via HTTP proxy | `wh wget --code X http://...` |
+
+### Network Tools
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `wh ping` | Measure wormhole latency | `wh ping 7-guitar-sunset` |
+| `wh ping -l` | Listen for ping requests | `wh ping -l` |
+| `wh tunnel` | SSH-style port forwarding | `wh tunnel -L 8080:localhost:80 CODE` |
+| `wh tunnel -l` | Accept tunnel connections | `wh tunnel -l` |
+| `wh proxy` | SOCKS5 proxy client | `wh proxy 7-guitar-sunset` |
+| `wh proxy -l` | SOCKS5 proxy server | `wh proxy -l` |
+| `wh rsync` | Incremental file sync | `wh rsync -r ./src CODE:./dest` |
+| `wh rsync -l` | Receive rsync files | `wh rsync -l ./dest` |
+
+### WNS Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `wh identity create` | Generate new WNS identity | `wh identity create --name server` |
+| `wh identity list` | List all identities | `wh identity list` |
+| `wh identity show` | Show identity details | `wh identity show abc123` |
+| `wh identity export` | Export public key | `wh identity export abc123` |
+| `wh identity delete` | Delete an identity | `wh identity delete abc123` |
+| `wh identity set-name` | Set scoped name | `wh identity set-name abc123 laptop` |
+| `wh identity claim-name` | Claim global name | `wh identity claim-name my-laptop abc123` |
+| `wh identity list-names` | List claimed names | `wh identity list-names` |
+| `wh identity release-name` | Release global name | `wh identity release-name my-laptop` |
+| `wh serve` | Persistent server with identity | `wh serve --ssh` |
+| `wh alias add` | Add local alias | `wh alias add laptop wh://abc.wns` |
+| `wh alias remove` | Remove alias | `wh alias remove laptop` |
+| `wh alias list` | List all aliases | `wh alias list` |
+| `wh alias resolve` | Resolve alias to address | `wh alias resolve laptop` |
 
 ---
 
@@ -280,6 +482,25 @@ For privacy or performance, run your own relay:
 wh --relay ws://my-relay.example.com:4000/v1 nc -l
 ```
 
+### Data Directory
+
+WNS stores data in `~/.wh/`:
+
+```
+~/.wh/
+├── identity/           # WNS identities (keypairs)
+│   └── <address>/
+│       ├── private.key
+│       └── public.key
+├── known_hosts/        # Cached public keys (TOFU)
+│   └── <address>.json
+├── advertise/          # Published advertisements
+│   └── <address>.json
+├── names/              # Claimed global names
+│   └── <name>.json
+└── aliases.json        # Local alias mappings
+```
+
 ---
 
 ## Development
@@ -319,12 +540,15 @@ mypy src
 
 ## Roadmap
 
-- [ ] **Permanent Addresses**: Static wormhole codes for persistent services
+- [x] **Wormhole Name Service (WNS)**: Persistent addresses with DHT discovery
+- [x] **Local Aliases**: SSH-config style petnames for addresses
+- [x] **Global Names**: First-come-first-served name registry
+- [x] **wh ping**: Network diagnostics through wormhole
+- [x] **wh tunnel**: SSH-style port forwarding
+- [x] **wh proxy**: SOCKS5 proxy through wormhole
+- [x] **wh rsync**: Efficient file synchronization
 - [ ] **Browser Extension**: Browse wormhole-hosted sites in Chrome/Firefox
 - [ ] **Web Server Integration**: Apache/Nginx/HAProxy wormhole modules
-- [ ] **wh ping**: Network diagnostics through wormhole
-- [ ] **wh rsync**: Efficient file synchronization
-- [ ] **wh proxy**: SOCKS5 proxy through wormhole
 
 See [ROADMAP.md](ROADMAP.md) for detailed plans.
 

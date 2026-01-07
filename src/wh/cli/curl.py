@@ -16,7 +16,7 @@ from wh.core.wormhole_manager import WormholeManager
 @click.option(
     '--code',
     required=True,
-    help='Wormhole code of the HTTP proxy'
+    help='Wormhole code or WNS address (wh://xxx.wns) of the HTTP proxy'
 )
 @click.option(
     '-X', '--request',

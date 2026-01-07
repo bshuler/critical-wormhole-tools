@@ -16,16 +16,21 @@
 
 ---
 
-## Phase 2: Additional Network Tools (v0.2.0)
+## Phase 2: Additional Network Tools (v0.2.0) ✅ COMPLETE
 
-### Suggested New Commands
+### Implemented Commands
+
+| Tool | Traditional Equivalent | Status | Description |
+|------|----------------------|--------|-------------|
+| `wh ping` | `ping` | ✅ Complete | Round-trip latency measurement through wormhole |
+| `wh rsync` | `rsync` | ✅ Complete | Efficient incremental file sync (checksum-based) |
+| `wh proxy` | SOCKS5 proxy | ✅ Complete | Full SOCKS5 proxy through wormhole |
+| `wh tunnel` | `ssh -L/-R` | ✅ Complete | Local port forwarding (SSH-style) |
+
+### Future Network Tools (Lower Priority)
 
 | Tool | Traditional Equivalent | Priority | Description |
 |------|----------------------|----------|-------------|
-| `wh ping` | `ping` | High | Round-trip latency measurement through wormhole |
-| `wh rsync` | `rsync` | High | Efficient incremental file sync |
-| `wh proxy` | SOCKS5 proxy | High | Full SOCKS5 proxy through wormhole |
-| `wh tunnel` | `ssh -L/-R` | High | Local/remote port forwarding |
 | `wh telnet` | `telnet` | Medium | Raw TCP connection (for debugging) |
 | `wh ftp` | `ftp` | Medium | FTP client through wormhole |
 | `wh nmap` | `nmap` | Medium | Port scanning through wormhole proxy |
@@ -35,56 +40,88 @@
 | `wh vnc` | VNC client | Low | VNC desktop sharing through wormhole |
 | `wh rdp` | RDP client | Low | Windows Remote Desktop through wormhole |
 
-### Implementation Details
+### Usage Examples
 
 #### `wh ping`
 ```bash
-# Measure wormhole connection latency
+# Responder side
+wh ping -l
+# Listening on code: 7-guitar-sunset
+
+# Client side
 wh ping 7-guitar-sunset
-# PING 7-guitar-sunset: 64 bytes icmp_seq=1 time=45.2 ms
-# PING 7-guitar-sunset: 64 bytes icmp_seq=2 time=43.8 ms
-```
-
-#### `wh rsync`
-```bash
-# Efficient sync with delta compression
-wh rsync -avz ./local/ 7-guitar-sunset:/remote/
-wh rsync -avz 7-guitar-sunset:/remote/ ./local/
-```
-
-#### `wh proxy`
-```bash
-# Start SOCKS5 proxy
-wh listen --socks5
-# Configure browser: SOCKS5 proxy via wormhole code
-
-# Client connects and uses proxy
-wh proxy 7-guitar-sunset --port 1080
-# Now localhost:1080 is a SOCKS5 proxy through the wormhole
+# 64 bytes from peer: seq=0 time=45.23 ms
+# 64 bytes from peer: seq=1 time=43.81 ms
+# 64 bytes from peer: seq=2 time=44.12 ms
+# 64 bytes from peer: seq=3 time=42.95 ms
+#
+# --- wormhole ping statistics ---
+# 4 packets transmitted, 4 received, 0.0% packet loss
+# rtt min/avg/max/stddev = 42.950/44.028/45.230/0.841 ms
 ```
 
 #### `wh tunnel`
 ```bash
-# Local port forwarding (access remote service locally)
-wh tunnel -L 8080:localhost:80 7-guitar-sunset
-# Now localhost:8080 connects to remote's localhost:80
+# Remote: Accept tunnel connections
+wh tunnel -l
+# Tunnel listening on code: 7-guitar-sunset
 
-# Remote port forwarding (expose local service remotely)
-wh tunnel -R 8080:localhost:3000 7-guitar-sunset
-# Remote's localhost:8080 now connects to your localhost:3000
+# Local: Forward local port 8080 to remote's localhost:80
+wh tunnel -L 8080:localhost:80 7-guitar-sunset
+# Forwarding localhost:8080 -> localhost:80
+# Tunnel active, press Ctrl+C to stop
+
+# Now http://localhost:8080 accesses remote's port 80
+```
+
+#### `wh proxy`
+```bash
+# Remote: Run as proxy server
+wh proxy -l
+# Proxy listening on code: 7-guitar-sunset
+
+# Local: Start SOCKS5 proxy
+wh proxy 7-guitar-sunset
+# SOCKS5 proxy running on 127.0.0.1:1080
+
+# Use with curl
+curl --socks5 127.0.0.1:1080 https://example.com
+
+# Or configure browser to use SOCKS5 proxy at 127.0.0.1:1080
+```
+
+#### `wh rsync`
+```bash
+# Remote: Listen to receive files
+wh rsync -l ./dest
+# Rsync listening on code: 7-guitar-sunset
+
+# Local: Sync directory
+wh rsync -r ./src 7-guitar-sunset:./dest
+# Local files: 42
+# Remote files: 38
+# Files to send: 5
+# Sending: new-file.txt
+# Sending: modified-file.py
+# Sent 5 files, 12345 bytes
+
+# With delete (remove files not in source)
+wh rsync -r --delete ./src 7-guitar-sunset:./dest
 ```
 
 ---
 
-## Phase 3: Permanent Wormhole Addressing (v0.3.0)
+## Phase 3: Wormhole Name Service (v0.3.0) ✅ COMPLETE
 
-### The Problem
+### The Problem (SOLVED)
 Current wormhole codes are ephemeral - they're generated fresh for each session and expire after use. This prevents use cases like:
 - Hosting a website on a wormhole address
 - Running a persistent service accessible via wormhole
 - Bookmarking a wormhole address
 
-### Proposed Solution: Wormhole Name Service (WNS)
+### Implemented Solution: Wormhole Name Service (WNS)
+
+WNS provides persistent, self-certifying addresses using Ed25519 keypairs. The address is derived from the public key hash (like Tor .onion addresses).
 
 #### Architecture
 
@@ -94,73 +131,86 @@ Current wormhole codes are ephemeral - they're generated fresh for each session 
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  ┌──────────────┐    ┌─────────────────┐    ┌────────────────┐  │
-│  │   WNS Node   │◄──►│   WNS Registry  │◄──►│   WNS Node     │  │
-│  │   (DHT)      │    │   (Distributed) │    │   (DHT)        │  │
+│  │   WNS Node   │◄──►│   Kademlia DHT  │◄──►│   WNS Node     │  │
+│  │   (Client)   │    │   (Distributed) │    │   (Server)     │  │
 │  └──────────────┘    └─────────────────┘    └────────────────┘  │
-│         ▲                                           ▲           │
-│         │                                           │           │
-│         │          ┌─────────────────┐              │           │
-│         └──────────│   WNS Client    │──────────────┘           │
-│                    └─────────────────┘                          │
-│                            │                                    │
-│                            ▼                                    │
-│                    ┌─────────────────┐                          │
-│                    │   wh://name     │                          │
-│                    │   Resolution    │                          │
-│                    └─────────────────┘                          │
+│         │                    │                      │           │
+│         │                    │                      │           │
+│         │   Lookup:          │    Publish:          │           │
+│         │   address→code     │    signed            │           │
+│         │                    │    advertisement     │           │
+│         └────────────────────┴──────────────────────┘           │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### Naming Scheme
+#### Address Formats
 
 ```
-wh://mysite.wh              # Human-readable name (requires registration)
-wh://abc123def456.onion.wh  # Self-certifying address (Tor-like)
-wh://7-guitar-sunset        # Ephemeral code (current behavior)
+wh://a7b3c9d2e1f4g5h6i7j8k9l0m1.wns    # Full self-certifying address
+wh://laptop.a7b3c9d2e1f4g5h6i7j8k9l0m1.wns  # Scoped name (publisher-controlled)
+wh://my-laptop.wns                      # Global name (first-come-first-served)
+laptop                                  # Local alias (petname)
+7-guitar-sunset                         # Ephemeral code (legacy)
 ```
 
-#### Registration Flow
+#### Implemented Commands
 
 ```bash
-# Register a permanent wormhole name
-wh register mysite
-# Generates keypair, registers with WNS
-# Output: Registered wh://mysite.wh (expires: 2025-01-01)
+# Identity Management
+wh identity create                      # Generate new identity
+wh identity create --name "my-server"   # With local display name
+wh identity list                        # List all identities
+wh identity show <address>              # Show identity details
+wh identity export <address>            # Export public key
+wh identity delete <address>            # Delete identity
 
-# Renew registration
-wh renew mysite
+# Scoped Names (publisher-controlled)
+wh identity set-name <address> laptop   # Set scoped name
+# Server advertises as: wh://laptop.<address>.wns
 
-# Transfer ownership
-wh transfer mysite --to <public-key>
+# Global Names (first-come-first-served via DHT)
+wh identity claim-name my-laptop <addr> # Claim a global name
+wh identity list-names                  # List claimed names
+wh identity release-name my-laptop      # Release a name
+
+# Local Aliases (petnames)
+wh alias add laptop wh://<address>.wns  # Add alias
+wh alias add server wh://<addr>.wns --username admin  # With default user
+wh alias list                           # List all aliases
+wh alias remove laptop                  # Remove alias
+wh alias resolve laptop                 # Resolve to address
+
+# Persistent Server
+wh serve --ssh                          # Start with auto identity
+wh serve --ssh --identity <address>     # Use specific identity
 ```
 
-#### Self-Certifying Addresses
+#### Security Model
 
-For users who don't want to rely on any registry:
+| Feature | Implementation |
+|---------|----------------|
+| Address derivation | `base32(sha256(ed25519_pubkey)[:16])` - 26 chars |
+| Code advertisement | Signed with Ed25519, includes expiry timestamp |
+| Trust model | TOFU (Trust-On-First-Use), like SSH |
+| Key storage | `~/.wh/known_hosts/<address>.json` |
+| Name claims | Signed, expire after 7 days if not renewed |
 
-```bash
-# Generate permanent self-certifying address
-wh keygen
-# Output: Your permanent address: wh://a7b3c9d2e1f4.self.wh
-# Private key saved to ~/.wh/keys/a7b3c9d2e1f4.key
+#### Data Storage
 
-# Anyone can connect to you using this address
-# The address IS the public key (like Tor .onion addresses)
 ```
-
-### Persistent Listener Daemon
-
-```bash
-# Run as a system service
-wh daemon start --name mysite
-# Keeps wormhole connection alive
-# Auto-reconnects on failure
-# Registers with WNS
-
-# Systemd service file generated automatically
-sudo systemctl enable wh-mysite
-sudo systemctl start wh-mysite
+~/.wh/
+├── identity/           # WNS identities (keypairs)
+│   └── <address>/
+│       ├── private.key
+│       └── public.key
+├── known_hosts/        # Cached public keys (TOFU)
+│   └── <address>.json
+├── advertise/          # Published advertisements
+│   └── <address>.json
+├── names/              # Claimed global names
+│   └── <name>.json
+└── aliases.json        # Local alias mappings
 ```
 
 ---
@@ -395,8 +445,8 @@ wh --namespace=engineering ssh team-server
 | Phase | Version | Target | Status |
 |-------|---------|--------|--------|
 | Core Tools | v0.1.0 | Q1 2024 | ✅ Complete |
-| Additional Network Tools | v0.2.0 | Q2 2024 | 🔄 Planning |
-| Permanent Addressing | v0.3.0 | Q3 2024 | 📋 Design |
+| Additional Network Tools | v0.2.0 | Q2 2024 | ✅ Complete |
+| Wormhole Name Service | v0.3.0 | Q3 2024 | ✅ Complete |
 | Browser Extension | v0.4.0 | Q4 2024 | 📋 Design |
 | Web Server Integration | v0.5.0 | Q1 2025 | 📋 Design |
 | Enterprise Features | v1.0.0 | Q2 2025 | 📋 Design |

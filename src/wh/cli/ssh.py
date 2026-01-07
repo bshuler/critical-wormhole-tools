@@ -64,6 +64,10 @@ async def ssh(
 
         # Use SSH key
         $ wh ssh -i ~/.ssh/id_rsa user@7-guitar-sunset
+
+        # Connect using WNS address (persistent naming)
+        $ wh ssh wh://abc123def456.wns
+        $ wh ssh user@wh://abc123def456.wns
     """
     verbose = ctx.obj.get('verbose', 0)
 
