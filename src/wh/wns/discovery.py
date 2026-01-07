@@ -15,12 +15,10 @@ Supports multiple name types:
 Clients use the Discovery class which tries backends in order.
 """
 
-import asyncio
-import json
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import Optional, List
 
 import httpx
 
@@ -29,12 +27,10 @@ from wh.wns.identity import (
     WNSIdentity,
     WNSIdentityStore,
     parse_wns_address,
-    parse_scoped_wns_address,
 )
 from wh.wns.names import (
     NameClaim,
     NameClaimStore,
-    is_global_name_address,
     parse_global_name,
     name_to_dht_key,
 )

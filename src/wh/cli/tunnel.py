@@ -7,7 +7,7 @@ Supports both local (-L) and remote (-R) port forwarding.
 import asyncio
 import click
 import struct
-from typing import Optional, Tuple, Any
+from typing import Optional, Tuple
 
 from wh.core.wormhole_manager import WormholeManager
 from wh.core.protocol import StreamingProtocol

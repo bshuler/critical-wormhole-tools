@@ -8,7 +8,6 @@ import asyncio
 import click
 import hashlib
 import json
-import os
 import struct
 from pathlib import Path
 from typing import Optional, List, Dict, Any

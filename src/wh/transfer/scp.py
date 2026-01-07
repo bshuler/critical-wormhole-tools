@@ -6,7 +6,6 @@ tunneled through the wormhole connection.
 """
 
 from typing import Optional, Any, Callable
-from pathlib import Path
 
 import asyncssh
 

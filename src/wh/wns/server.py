@@ -16,7 +16,7 @@ import asyncio
 import logging
 import signal
 from pathlib import Path
-from typing import Optional, Callable, Any
+from typing import Optional, Callable
 from enum import Enum
 
 from wh.wns.identity import WNSIdentity, WNSIdentityStore

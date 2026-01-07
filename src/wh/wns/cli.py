@@ -181,7 +181,7 @@ def identity_delete(address: str, yes: bool) -> None:
 
     # Confirm deletion
     if not yes:
-        click.echo(f"WARNING: This will permanently delete the identity and private key.")
+        click.echo("WARNING: This will permanently delete the identity and private key.")
         click.echo(f"Address: {identity.full_address}")
         if not click.confirm("Are you sure?"):
             click.echo("Cancelled.")

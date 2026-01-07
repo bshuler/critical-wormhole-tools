@@ -1,9 +1,7 @@
 """Functional tests for wh nc command."""
 
 import pytest
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
 from io import BytesIO
-from click.testing import CliRunner
 
 
 class TestNetcatBidirectionalPipe:
@@ -49,7 +47,6 @@ class TestNetcatCLI:
         # Test the validation logic directly without invoking the full command
         # since the async reactor integration makes CLI testing complex
         from wh.cli.nc import nc
-        import click
 
         # Validate that the command expects arguments
         assert nc.params is not None
@@ -77,13 +74,13 @@ class TestNetcatIntegration:
     @pytest.mark.asyncio
     async def test_bidirectional_transfer(self, in_memory_pipe):
         """Test full bidirectional transfer through pipe."""
-        from wh.core.protocol import BidirectionalPipe, StreamingProtocol
+        from wh.core.protocol import StreamingProtocol
 
         t1, t2 = in_memory_pipe
 
-        stdin1 = BytesIO(b"hello from 1\n")
+        _stdin1 = BytesIO(b"hello from 1\n")  # noqa: F841
         stdout1 = BytesIO()
-        stdin2 = BytesIO(b"hello from 2\n")
+        _stdin2 = BytesIO(b"hello from 2\n")  # noqa: F841
         stdout2 = BytesIO()
 
         # Simulate connection

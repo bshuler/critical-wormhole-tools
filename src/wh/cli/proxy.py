@@ -8,7 +8,7 @@ import asyncio
 import click
 import struct
 import socket
-from typing import Optional, Tuple
+from typing import Optional
 
 from wh.core.wormhole_manager import WormholeManager
 from wh.core.protocol import StreamingProtocol

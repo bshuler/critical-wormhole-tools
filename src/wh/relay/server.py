@@ -7,7 +7,6 @@ This makes `wh` completely self-contained - no external infrastructure needed.
 import asyncio
 import logging
 import signal
-from typing import Optional
 
 from .mailbox import MailboxServer
 from .transit import TransitRelay

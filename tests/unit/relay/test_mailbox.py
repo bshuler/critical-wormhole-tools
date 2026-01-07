@@ -3,7 +3,7 @@ Unit tests for the mailbox server.
 """
 
 import pytest
-from wh.relay.mailbox import MailboxServer, Mailbox, Nameplate, Message
+from wh.relay.mailbox import MailboxServer, Mailbox, Nameplate
 
 
 class TestMailbox:

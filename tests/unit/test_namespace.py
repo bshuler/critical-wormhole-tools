@@ -1,6 +1,5 @@
 """Unit tests for relay-scoped WNS namespace encryption."""
 
-import pytest
 import json
 
 from wh.wns.namespace import (

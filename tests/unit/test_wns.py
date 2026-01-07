@@ -3,10 +3,6 @@ Tests for WNS (Wormhole Name Service) functionality.
 """
 
 import pytest
-import json
-import tempfile
-from pathlib import Path
-from datetime import datetime, timezone, timedelta
 
 from wh.wns.identity import (
     WNSIdentity,
@@ -16,7 +12,7 @@ from wh.wns.identity import (
     parse_scoped_wns_address,
 )
 from wh.wns.advertisement import CodeAdvertisement
-from wh.wns.aliases import Alias, AliasStore
+from wh.wns.aliases import AliasStore
 from wh.wns.names import (
     NameClaim,
     NameClaimStore,

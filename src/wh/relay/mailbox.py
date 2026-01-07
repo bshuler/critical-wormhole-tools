@@ -340,7 +340,7 @@ class MailboxServer:
     async def _handle_close(self, websocket, data: dict, state: dict) -> None:
         """Handle close (close a mailbox)."""
         mailbox_id = state.get("mailbox")
-        mood = data.get("mood", "happy")
+        _mood = data.get("mood", "happy")  # noqa: F841 - Reserved for future logging
 
         if mailbox_id:
             # Unsubscribe

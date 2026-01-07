@@ -6,7 +6,6 @@ tunneled through the wormhole connection.
 """
 
 from typing import Optional, Any, List
-from pathlib import Path
 import os
 import stat
 
@@ -357,7 +356,7 @@ class WormholeSFTP:
     async def interactive_loop(self) -> None:
         """Run interactive SFTP shell."""
         try:
-            import readline  # Enable line editing
+            import readline  # noqa: F401 - Enable line editing side effect
         except ImportError:
             pass
 

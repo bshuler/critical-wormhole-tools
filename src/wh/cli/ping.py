@@ -348,7 +348,7 @@ def ping(
 
                     # Print statistics
                     click.echo("")
-                    click.echo(f"--- wormhole ping statistics ---")
+                    click.echo("--- wormhole ping statistics ---")
                     click.echo(
                         f"{stats['transmitted']} packets transmitted, "
                         f"{stats['received']} received, "

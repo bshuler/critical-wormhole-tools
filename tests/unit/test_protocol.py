@@ -187,7 +187,7 @@ class TestBidirectionalPipe:
         """Test that shutdown_event can stop the listener."""
         import asyncio
         from wh.core.protocol import BidirectionalPipe
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import MagicMock
 
         # Create a mock manager
         manager = MagicMock()

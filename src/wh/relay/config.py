@@ -8,7 +8,6 @@ Stores relay configurations in ~/.wh/relays.yaml with support for:
 - Import/export of configurations
 """
 
-import os
 import yaml
 from dataclasses import dataclass, field, asdict
 from typing import Optional, Dict, List

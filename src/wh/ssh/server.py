@@ -151,7 +151,7 @@ class SSHServerHandler:
             async def _drain_local(self):
                 try:
                     await self._local_writer.drain()
-                except:
+                except Exception:
                     pass
 
             async def _forward_local_to_wormhole(self):
@@ -237,7 +237,7 @@ class SSHServerHandler:
                 finally:
                     try:
                         proc.stdin.close()
-                    except:
+                    except Exception:
                         pass
 
             async def forward_stdout():
@@ -319,7 +319,7 @@ class SSHServerHandler:
                             break
                         process.stdout.write(data.decode('utf-8', errors='replace'))
                         await process.stdout.drain()
-                    except:
+                    except Exception:
                         break
 
             async def write_master():
@@ -329,7 +329,7 @@ class SSHServerHandler:
                         if not data:
                             break
                         os.write(master_fd, data)
-                except:
+                except Exception:
                     pass
 
             await asyncio.gather(read_master(), write_master(), return_exceptions=True)
@@ -338,5 +338,5 @@ class SSHServerHandler:
         finally:
             try:
                 os.close(master_fd)
-            except:
+            except Exception:
                 pass

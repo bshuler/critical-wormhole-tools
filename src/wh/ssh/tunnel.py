@@ -101,7 +101,7 @@ class WormholeTunnel:
                     self._reader_task.cancel()
                 try:
                     self._local_sock.close()
-                except:
+                except Exception:
                     pass
 
         class BridgeFactory(Factory):

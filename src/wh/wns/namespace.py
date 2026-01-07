@@ -28,7 +28,6 @@ This ensures:
 
 import base64
 import hashlib
-import os
 from dataclasses import dataclass
 from typing import Optional
 

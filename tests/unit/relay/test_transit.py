@@ -2,7 +2,6 @@
 Unit tests for the transit relay.
 """
 
-import pytest
 from wh.relay.transit import TransitRelay, PendingConnection
 
 

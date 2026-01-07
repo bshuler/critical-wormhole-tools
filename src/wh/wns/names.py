@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-from wh.wns.identity import WNSIdentity, WNSIdentityStore, BASE32_ALPHABET
+from wh.wns.identity import WNSIdentity, BASE32_ALPHABET
 
 
 logger = logging.getLogger(__name__)

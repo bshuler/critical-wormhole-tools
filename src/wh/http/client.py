@@ -150,7 +150,6 @@ class WormholeHTTPClient:
                 return p
 
         # Connect
-        from twisted.internet import defer
 
         d = endpoint.connect(HTTPClientFactory())
 
@@ -265,7 +264,6 @@ class HTTPProxyHandler:
                 return HTTPProxyProtocol()
 
         # Start listening
-        from twisted.internet import defer
 
         d = endpoint.listen(HTTPProxyFactory())
 

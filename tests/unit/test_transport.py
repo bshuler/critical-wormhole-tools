@@ -1,7 +1,6 @@
 """Unit tests for transport module."""
 
-import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock
 
 
 class TestAsyncioTransportAdapter:

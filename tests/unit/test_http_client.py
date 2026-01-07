@@ -1,7 +1,7 @@
 """Unit tests for HTTP client module."""
 
 import pytest
-from unittest.mock import Mock, MagicMock, AsyncMock
+from unittest.mock import MagicMock
 
 
 class TestHTTPResponse:

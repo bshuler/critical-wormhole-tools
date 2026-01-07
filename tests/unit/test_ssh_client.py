@@ -1,7 +1,7 @@
 """Unit tests for SSH client module."""
 
 import pytest
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, MagicMock, AsyncMock
 
 
 class TestWormholeSSHClient:

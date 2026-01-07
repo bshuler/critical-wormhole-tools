@@ -277,7 +277,6 @@ class BidirectionalPipe:
             protocol_name: Name of the subprotocol to use.
             shutdown_event: Optional event to signal shutdown.
         """
-        from twisted.internet import defer
 
         # Connect to peer's listening endpoint
         endpoint = manager.connector_for(protocol_name)
@@ -382,7 +381,7 @@ class BidirectionalPipe:
 
         d.addCallbacks(callback, errback)
 
-        port = await future
+        await future
         self._status("Listening for peer connection...")
 
         # Wait for connection or shutdown

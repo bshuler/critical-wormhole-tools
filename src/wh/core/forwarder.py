@@ -111,7 +111,6 @@ class PortForwarder:
                 return ForwarderProtocol()
 
         # Start listening
-        from twisted.internet import defer
 
         d = endpoint.listen(ForwarderFactory())
 
