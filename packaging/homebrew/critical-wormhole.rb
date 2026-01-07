@@ -8,7 +8,7 @@ class CriticalWormhole < Formula
   desc "Secure network utilities using Magic Wormhole code-based addressing"
   homepage "https://github.com/bshuler/critical-wormhole-tools"
   url "https://files.pythonhosted.org/packages/source/c/critical_wormhole_tools/critical_wormhole_tools-0.1.0.tar.gz"
-  sha256 "PLACEHOLDER_SHA256"  # Update with actual SHA256 after PyPI release
+  sha256 "72330a20206e3e1f31f4ea340f5ce1a959672487567c335a3c0de7c7bcd035e5"
   license "MIT"
   head "https://github.com/bshuler/critical-wormhole-tools.git", branch: "main"
 
