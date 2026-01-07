@@ -51,6 +51,7 @@ const advancedContent = document.getElementById('advancedContent');
 const resetBtn = document.getElementById('resetBtn');
 const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
+const syncFromCliBtn = document.getElementById('syncFromCliBtn');
 
 /**
  * Load settings from chrome.storage
@@ -356,6 +357,68 @@ function importSettings() {
 }
 
 /**
+ * Sync relays from CLI configuration via daemon
+ */
+async function syncFromCli() {
+  const daemonPort = settings.daemonPort || 9475;
+
+  try {
+    syncFromCliBtn.disabled = true;
+    syncFromCliBtn.textContent = 'Syncing...';
+
+    const response = await fetch(`http://localhost:${daemonPort}/config/relays`);
+
+    if (!response.ok) {
+      throw new Error(`Daemon returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.relays || !Array.isArray(data.relays)) {
+      throw new Error('Invalid response from daemon');
+    }
+
+    // Merge CLI relays with existing relays
+    // CLI relays take precedence for matching names
+    const existingByName = new Map(settings.relays.map(r => [r.name, r]));
+
+    // Add/update CLI relays
+    for (const cliRelay of data.relays) {
+      existingByName.set(cliRelay.name, {
+        name: cliRelay.name,
+        mailboxUrl: cliRelay.mailboxUrl,
+        transitUrl: cliRelay.transitUrl,
+        description: cliRelay.description || '',
+        isDefault: cliRelay.isDefault
+      });
+    }
+
+    // Convert back to array
+    settings.relays = Array.from(existingByName.values());
+
+    // Ensure at least one relay is default
+    if (!settings.relays.some(r => r.isDefault) && settings.relays.length > 0) {
+      settings.relays[0].isDefault = true;
+    }
+
+    saveSettings();
+    renderRelayList();
+    showNotification(`Synced ${data.relays.length} relay(s) from CLI config`);
+
+  } catch (err) {
+    console.error('Sync from CLI failed:', err);
+    if (err.message.includes('Failed to fetch')) {
+      showNotification('Daemon not running. Start with: wh daemon start', true);
+    } else {
+      showNotification('Failed to sync: ' + err.message, true);
+    }
+  } finally {
+    syncFromCliBtn.disabled = false;
+    syncFromCliBtn.textContent = 'Sync from CLI';
+  }
+}
+
+/**
  * Show a notification
  */
 function showNotification(message, isError = false) {
@@ -401,6 +464,7 @@ advancedToggle.addEventListener('click', toggleAdvanced);
 resetBtn.addEventListener('click', resetToDefaults);
 exportBtn.addEventListener('click', exportSettings);
 importBtn.addEventListener('click', importSettings);
+syncFromCliBtn.addEventListener('click', syncFromCli);
 
 // Close modal on backdrop click
 relayModal.addEventListener('click', (e) => {

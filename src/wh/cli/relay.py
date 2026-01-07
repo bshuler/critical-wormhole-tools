@@ -78,6 +78,17 @@ def relay(ctx: click.Context) -> None:
     is_flag=True,
     help="Only run transit relay (no mailbox server)",
 )
+@click.option(
+    "-a", "--advertise",
+    is_flag=True,
+    help="Advertise relay via mDNS/Bonjour for local network discovery",
+)
+@click.option(
+    "-n", "--name",
+    "advertise_name",
+    default=None,
+    help="Name to advertise (default: hostname)",
+)
 @click.pass_context
 def serve(
     ctx: click.Context,
@@ -86,6 +97,8 @@ def serve(
     transit_port: int,
     mailbox_only: bool,
     transit_only: bool,
+    advertise: bool,
+    advertise_name: Optional[str],
 ) -> None:
     """
     Run a built-in wormhole relay server.
@@ -107,6 +120,10 @@ def serve(
         # Only transit relay
         wh relay serve --transit-only
 
+        # Advertise on local network via mDNS/Bonjour
+        wh relay serve --advertise
+        wh relay serve --advertise --name myrelay
+
     \b
     Configuring clients:
         wh --relay ws://your-server:4000/v1 --transit tcp:your-server:4001 nc -l
@@ -114,11 +131,13 @@ def serve(
         # Or set environment variables
         export WH_RELAY=ws://your-server:4000/v1
         export WH_TRANSIT=tcp:your-server:4001
+
+        # Or discover on local network
+        wh relay discover --add
     """
     # Check for websockets dependency
-    try:
-        import websockets
-    except ImportError:
+    import importlib.util
+    if importlib.util.find_spec("websockets") is None:
         click.echo(
             "Error: websockets package required for relay server.\n"
             "Install with: pip install 'wh[relay]'",
@@ -129,6 +148,19 @@ def serve(
     if mailbox_only and transit_only:
         click.echo("Error: Cannot specify both --mailbox-only and --transit-only", err=True)
         sys.exit(1)
+
+    # Check for zeroconf if advertising
+    zeroconf_available = False
+    if advertise:
+        if importlib.util.find_spec("zeroconf") is not None:
+            zeroconf_available = True
+        else:
+            click.echo(
+                "Warning: zeroconf package not installed. "
+                "Install with: pip install zeroconf",
+                err=True,
+            )
+            click.echo("Continuing without mDNS advertisement...", err=True)
 
     # Configure logging
     verbose = ctx.obj.get("verbose", 0) if ctx.obj else 0
@@ -143,20 +175,73 @@ def serve(
             format="%(asctime)s %(levelname)s: %(message)s",
         )
 
+    def setup_mdns_advertisement(relay_name: str, mb_port: int, tr_port: int) -> Optional[tuple]:
+        """Set up mDNS service advertisement."""
+        if not (advertise and zeroconf_available):
+            return None
+
+        import socket
+        from zeroconf import ServiceInfo, Zeroconf
+
+        hostname = socket.gethostname()
+        service_name = relay_name or hostname
+
+        # Get local IP address
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            local_ip = "127.0.0.1"
+
+        service_info = ServiceInfo(
+            "_wormhole-relay._tcp.local.",
+            f"{service_name}._wormhole-relay._tcp.local.",
+            addresses=[socket.inet_aton(local_ip)],
+            port=mb_port,
+            properties={
+                "name": service_name.encode(),
+                "transit_port": str(tr_port).encode(),
+                "version": "1".encode(),
+            },
+        )
+
+        zc = Zeroconf()
+        zc.register_service(service_info)
+        click.echo(f"  mDNS: {service_name} (discoverable via 'wh relay discover')")
+        return (zc, service_info)
+
+    def cleanup_mdns(mdns_info: Optional[tuple]) -> None:
+        """Clean up mDNS registration."""
+        if mdns_info:
+            zc, service_info = mdns_info
+            zc.unregister_service(service_info)
+            zc.close()
+
     async def run():
         from wh.relay import MailboxServer, TransitRelay, RelayServer
+
+        mdns_info = None
 
         if mailbox_only:
             server = MailboxServer(host=host, port=mailbox_port)
             click.echo(f"Starting mailbox server on ws://{host}:{mailbox_port}/v1")
+            mdns_info = setup_mdns_advertisement(advertise_name, mailbox_port, 0)
             click.echo("Press Ctrl+C to stop")
-            await server.serve_forever()
+            try:
+                await server.serve_forever()
+            finally:
+                cleanup_mdns(mdns_info)
 
         elif transit_only:
             server = TransitRelay(host=host, port=transit_port)
             click.echo(f"Starting transit relay on tcp://{host}:{transit_port}")
             click.echo("Press Ctrl+C to stop")
-            await server.serve_forever()
+            try:
+                await server.serve_forever()
+            finally:
+                cleanup_mdns(mdns_info)
 
         else:
             server = RelayServer(
@@ -164,9 +249,10 @@ def serve(
                 mailbox_port=mailbox_port,
                 transit_port=transit_port,
             )
-            click.echo(f"Starting wormhole relay server:")
+            click.echo("Starting wormhole relay server:")
             click.echo(f"  Mailbox: ws://{host}:{mailbox_port}/v1")
             click.echo(f"  Transit: tcp://{host}:{transit_port}")
+            mdns_info = setup_mdns_advertisement(advertise_name, mailbox_port, transit_port)
             click.echo()
             click.echo("Configure clients with:")
             click.echo(f"  export WH_RELAY=ws://{host}:{mailbox_port}/v1")
@@ -176,7 +262,10 @@ def serve(
             click.echo(f"  wh relay add myrelay ws://{host}:{mailbox_port}/v1 tcp:{host}:{transit_port}")
             click.echo()
             click.echo("Press Ctrl+C to stop")
-            await server.serve_forever()
+            try:
+                await server.serve_forever()
+            finally:
+                cleanup_mdns(mdns_info)
 
     try:
         asyncio.run(run())
@@ -219,7 +308,7 @@ def list_relays(ctx: click.Context, as_json: bool) -> None:
         if r.description:
             click.echo(f"  Description: {r.description}")
         if r.namespace_key:
-            click.echo(f"  Namespace: encrypted")
+            click.echo("  Namespace: encrypted")
         click.echo()
 
 
@@ -270,7 +359,7 @@ def add_relay(
         click.echo(f"Error: Relay '{name}' already exists. Remove it first with 'wh relay remove {name}'", err=True)
         sys.exit(1)
 
-    relay = manager.add_relay(
+    manager.add_relay(
         name=name,
         mailbox_url=mailbox_url,
         transit_url=transit_url,
@@ -281,7 +370,7 @@ def add_relay(
 
     click.echo(f"Added relay '{name}'")
     if set_default:
-        click.echo(f"Set as default relay")
+        click.echo("Set as default relay")
 
 
 @relay.command("remove")
@@ -441,7 +530,7 @@ def share_relay(
             try:
                 async with wh_manager:
                     await wh_manager.create_and_allocate_code()
-                    click.echo(f"Share this relay config with:")
+                    click.echo("Share this relay config with:")
                     click.echo(f"  wh relay share NEWNAME --receive --code {wh_manager.code}")
                     click.echo()
                     click.echo("Waiting for receiver...", err=True)
@@ -522,7 +611,7 @@ def discover_relays(ctx: click.Context, timeout: int, add_found: bool) -> None:
 
     zeroconf = Zeroconf()
     listener = RelayListener()
-    browser = ServiceBrowser(zeroconf, "_wormhole-relay._tcp.local.", listener)
+    ServiceBrowser(zeroconf, "_wormhole-relay._tcp.local.", listener)
 
     try:
         time.sleep(timeout)
@@ -545,7 +634,7 @@ def discover_relays(ctx: click.Context, timeout: int, add_found: bool) -> None:
                     name=r["name"],
                     mailbox_url=f"ws://{r['host']}:{r['mailbox_port']}/v1",
                     transit_url=f"tcp:{r['host']}:{r['transit_port']}",
-                    description=f"Discovered via mDNS",
+                    description="Discovered via mDNS",
                 )
                 click.echo(f"Added relay '{r['name']}'")
             except Exception as e:

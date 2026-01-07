@@ -8,9 +8,8 @@ Provides HTTP API for the browser extension to:
 """
 
 import asyncio
-import json
 import click
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from functools import wraps
 
 # Import wh first to ensure reactor is set up
@@ -30,7 +29,6 @@ def async_command(f):
                 if reactor.running:
                     reactor.callFromThread(reactor.stop)
 
-        loop = asyncio.get_event_loop()
         future = asyncio.ensure_future(run())
 
         if not reactor.running:
@@ -69,6 +67,7 @@ class WormholeDaemon:
         app.router.add_post('/resolve', self.handle_resolve)
         app.router.add_post('/connect', self.handle_connect)
         app.router.add_get('/browse/{url:.*}', self.handle_browse)
+        app.router.add_get('/config/relays', self.handle_get_relays)
         app.router.add_options('/{path:.*}', self.handle_cors)
 
         # Add CORS middleware
@@ -293,6 +292,39 @@ class WormholeDaemon:
                 text=html,
                 content_type='text/html'
             )
+
+        except Exception as e:
+            return web.json_response(
+                {'error': str(e)},
+                status=500
+            )
+
+    async def handle_get_relays(self, request):
+        """Return CLI relay configuration for browser extension sync."""
+        from aiohttp import web
+        from wh.relay.config import get_relay_manager
+
+        try:
+            manager = get_relay_manager()
+            config = manager.load()
+            relays = manager.list_relays()
+
+            # Format relays for browser extension
+            extension_relays = []
+            for r in relays:
+                extension_relays.append({
+                    'name': r.name,
+                    'mailboxUrl': r.mailbox_url,
+                    'transitUrl': r.transit_url,
+                    'description': r.description or '',
+                    'isDefault': r.name == config.default,
+                    'hasNamespaceKey': bool(r.namespace_key),
+                })
+
+            return web.json_response({
+                'relays': extension_relays,
+                'default': config.default,
+            })
 
         except Exception as e:
             return web.json_response(

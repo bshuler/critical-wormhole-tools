@@ -3,16 +3,17 @@ WormholeManager - Central abstraction for Magic Wormhole connections.
 
 Manages wormhole lifecycle, code allocation, and dilation for streaming.
 Supports both ephemeral wormhole codes and persistent WNS addresses.
+Supports multi-relay fallback for resilient connections.
 """
 
 import logging
-from typing import Optional, Callable, Any, Tuple
+from typing import Optional, Callable, Any, List
 import asyncio
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from wormhole import create
 
-from wh.wns.identity import is_wns_address, parse_wns_address
+from wh.wns.identity import is_wns_address
 
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ class WormholeManager:
         transit_relay: Optional[str] = None,
         code_length: int = 2,
         on_status: Optional[Callable[[str], None]] = None,
+        fallback_relays: Optional[List[tuple]] = None,
     ):
         """
         Initialize WormholeManager.
@@ -62,12 +64,20 @@ class WormholeManager:
             transit_relay: Transit relay for data transfer.
             code_length: Number of words in code (default 2 = number-word-word).
             on_status: Callback for status updates.
+            fallback_relays: List of (mailbox_url, transit_url) tuples to try
+                           if primary relay fails.
         """
         self.appid = appid or self.DEFAULT_APPID
         self.relay_url = relay_url or self.DEFAULT_RELAY
         self.transit_relay = transit_relay or self.DEFAULT_TRANSIT_RELAY
         self.code_length = code_length
         self.on_status = on_status
+
+        # Build list of relay configurations to try in order
+        self._relay_list: List[tuple] = [(self.relay_url, self.transit_relay)]
+        if fallback_relays:
+            self._relay_list.extend(fallback_relays)
+        self._current_relay_index = 0
 
         self._wormhole: Optional[Any] = None
         self._code: Optional[str] = None
@@ -76,10 +86,97 @@ class WormholeManager:
         self._dilated_wormhole: Optional[Any] = None  # DilatedWormhole object
         self._versions: Optional[dict] = None
 
+    @classmethod
+    def from_relay_config(
+        cls,
+        appid: Optional[str] = None,
+        code_length: int = 2,
+        on_status: Optional[Callable[[str], None]] = None,
+    ) -> "WormholeManager":
+        """
+        Create WormholeManager using relay configuration from ~/.wh/relays.yaml.
+
+        This loads all configured relays and sets up fallback in priority order:
+        1. Default relay (from config)
+        2. All other configured relays
+
+        Args:
+            appid: Application ID for wormhole namespace isolation.
+            code_length: Number of words in code (default 2).
+            on_status: Callback for status updates.
+
+        Returns:
+            WormholeManager with multi-relay fallback configured.
+        """
+        from wh.relay.config import get_relay_manager
+
+        manager = get_relay_manager()
+        relays = manager.list_relays()
+        config = manager.load()
+
+        # Find default relay
+        default_relay = None
+        fallback_relays = []
+
+        for relay in relays:
+            relay_tuple = (relay.mailbox_url, relay.transit_url)
+            if relay.name == config.default:
+                default_relay = relay_tuple
+            else:
+                fallback_relays.append(relay_tuple)
+
+        # If no explicit default, use first relay
+        if default_relay is None and relays:
+            default_relay = (relays[0].mailbox_url, relays[0].transit_url)
+            fallback_relays = [(r.mailbox_url, r.transit_url) for r in relays[1:]]
+
+        # Fall back to defaults if no relays configured
+        if default_relay is None:
+            default_relay = (cls.DEFAULT_RELAY, cls.DEFAULT_TRANSIT_RELAY)
+
+        return cls(
+            appid=appid,
+            relay_url=default_relay[0],
+            transit_relay=default_relay[1],
+            code_length=code_length,
+            on_status=on_status,
+            fallback_relays=fallback_relays,
+        )
+
     def _status(self, message: str) -> None:
         """Send status update if callback registered."""
         if self.on_status:
             self.on_status(message)
+
+    def _get_current_relay(self) -> tuple:
+        """Get the current relay configuration."""
+        return self._relay_list[self._current_relay_index]
+
+    def _try_next_relay(self) -> bool:
+        """
+        Switch to the next relay in the fallback list.
+
+        Returns:
+            True if there is another relay to try, False if all relays exhausted.
+        """
+        if self._current_relay_index < len(self._relay_list) - 1:
+            self._current_relay_index += 1
+            mailbox, transit = self._get_current_relay()
+            self.relay_url = mailbox
+            self.transit_relay = transit
+            self._status(f"Trying fallback relay: {mailbox}")
+            return True
+        return False
+
+    @property
+    def has_fallback_relays(self) -> bool:
+        """Check if there are multiple relays configured."""
+        return len(self._relay_list) > 1
+
+    @property
+    def current_relay_index(self) -> int:
+        """Get the index of the current relay being used."""
+        return self._current_relay_index
 
     def _get_event_loop(self):
         """Get or create an event loop for the current thread."""
@@ -261,6 +358,80 @@ class WormholeManager:
         d = self.verify_connection_deferred()
         return await self._deferred_to_future(d)
 
+    async def establish(self, timeout: Optional[float] = None) -> dict:
+        """
+        Wait for the connection to be established, alias for verify_connection.
+
+        Args:
+            timeout: Optional timeout in seconds.
+
+        Returns:
+            Dictionary of peer's advertised versions.
+
+        Raises:
+            asyncio.TimeoutError: If connection not established within timeout.
+        """
+        if timeout:
+            return await asyncio.wait_for(self.verify_connection(), timeout=timeout)
+        return await self.verify_connection()
+
+    async def establish_with_fallback(
+        self,
+        code_or_address: str,
+        timeout: float = 30.0,
+    ) -> dict:
+        """
+        Establish connection with automatic fallback to other relays on failure.
+
+        This method:
+        1. Tries to connect using the primary relay
+        2. If connection fails, tries each fallback relay in order
+        3. Returns once a connection is established or all relays exhausted
+
+        Args:
+            code_or_address: The wormhole code, WNS address, or alias to connect with.
+            timeout: Connection timeout per relay attempt (default 30 seconds).
+
+        Returns:
+            Dictionary of peer's advertised versions.
+
+        Raises:
+            ConnectionError: If unable to connect through any relay.
+        """
+        last_error = None
+
+        while True:
+            relay_url, transit_url = self._get_current_relay()
+            self._status(f"Connecting via {relay_url}...")
+
+            try:
+                # Create wormhole with current relay
+                await self.create_and_set_code(code_or_address)
+
+                # Wait for connection with timeout
+                versions = await self.establish(timeout=timeout)
+                self._status(f"Connected via {relay_url}")
+                return versions
+
+            except (asyncio.TimeoutError, Exception) as e:
+                last_error = e
+                logger.warning(f"Connection failed via {relay_url}: {e}")
+
+                # Clean up failed connection
+                try:
+                    await self.close()
+                except Exception:
+                    pass
+
+                # Try next relay
+                if not self._try_next_relay():
+                    # No more relays to try
+                    break
+
+        raise ConnectionError(
+            f"Unable to connect through any relay. Last error: {last_error}"
+        )
+
     @inlineCallbacks
     def dilate_deferred(self):
         """
@@ -351,6 +522,44 @@ class WormholeManager:
         if not self._dilated_wormhole:
             raise RuntimeError("Wormhole not dilated")
         return self._dilated_wormhole.listener_for(protocol_name)
+
+    @inlineCallbacks
+    def send_message_deferred(self, message: bytes):
+        """Send a message through the wormhole (Twisted Deferred version)."""
+        if not self._wormhole:
+            raise RuntimeError("Wormhole not created")
+        yield self._wormhole.send_message(message)
+        return None
+
+    async def send_message(self, message: bytes) -> None:
+        """Send a message through the wormhole."""
+        d = self.send_message_deferred(message)
+        return await self._deferred_to_future(d)
+
+    async def send_json(self, data: dict) -> None:
+        """Send JSON data through the wormhole."""
+        import json
+        message = json.dumps(data).encode("utf-8")
+        await self.send_message(message)
+
+    @inlineCallbacks
+    def receive_message_deferred(self):
+        """Receive a message from the wormhole (Twisted Deferred version)."""
+        if not self._wormhole:
+            raise RuntimeError("Wormhole not created")
+        message = yield self._wormhole.get_message()
+        return message
+
+    async def receive_message(self) -> bytes:
+        """Receive a message from the wormhole."""
+        d = self.receive_message_deferred()
+        return await self._deferred_to_future(d)
+
+    async def receive_json(self) -> dict:
+        """Receive JSON data from the wormhole."""
+        import json
+        message = await self.receive_message()
+        return json.loads(message.decode("utf-8"))
 
     @inlineCallbacks
     def close_deferred(self):

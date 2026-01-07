@@ -33,7 +33,6 @@ def async_command(f: Callable) -> Callable:
                     reactor.callFromThread(reactor.stop)
 
         # Schedule the coroutine
-        loop = asyncio.get_event_loop()
         future = asyncio.ensure_future(run())
 
         # Run the reactor (which drives both Twisted and asyncio)
@@ -168,22 +167,22 @@ def cli(ctx: click.Context, relay: str, transit: str, code_length: int, verbose:
 
 
 # Import and register subcommands
-# These will be implemented in subsequent phases
-from wh.cli.nc import nc
-from wh.cli.listen import listen
-from wh.cli.ssh import ssh
-from wh.cli.scp import scp
-from wh.cli.sftp import sftp
-from wh.cli.curl import curl
-from wh.cli.wget import wget
-from wh.cli.ping import ping
-from wh.cli.tunnel import tunnel
-from wh.cli.proxy import proxy
-from wh.cli.rsync import rsync
-from wh.cli.serve import serve
-from wh.cli.daemon import daemon
-from wh.cli.relay import relay
-from wh.wns.cli import identity, alias
+# These must be imported after cli group is defined, hence noqa: E402
+from wh.cli.nc import nc  # noqa: E402
+from wh.cli.listen import listen  # noqa: E402
+from wh.cli.ssh import ssh  # noqa: E402
+from wh.cli.scp import scp  # noqa: E402
+from wh.cli.sftp import sftp  # noqa: E402
+from wh.cli.curl import curl  # noqa: E402
+from wh.cli.wget import wget  # noqa: E402
+from wh.cli.ping import ping  # noqa: E402
+from wh.cli.tunnel import tunnel  # noqa: E402
+from wh.cli.proxy import proxy  # noqa: E402
+from wh.cli.rsync import rsync  # noqa: E402
+from wh.cli.serve import serve  # noqa: E402
+from wh.cli.daemon import daemon  # noqa: E402
+from wh.cli.relay import relay  # noqa: E402
+from wh.wns.cli import identity, alias  # noqa: E402
 
 cli.add_command(nc)
 cli.add_command(listen)
