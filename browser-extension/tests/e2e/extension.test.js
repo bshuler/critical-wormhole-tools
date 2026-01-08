@@ -15,50 +15,103 @@ const extensionPath = path.resolve(__dirname, '../../dist');
 
 // Helper to create browser context with extension
 async function createExtensionContext() {
-  const userDataDir = mkdtempSync(path.join(tmpdir(), 'playwright-ext-'));
-
-  // Use headless mode by default, can be overridden with HEADFUL=1
-  const headless = !process.env.HEADFUL;
-
-  const context = await chromium.launchPersistentContext(userDataDir, {
-    channel: 'chrome',
-    headless: headless,
+  // Use empty string for userDataDir to let Chrome create a temp profile
+  // This matches the approach in full-e2e.test.js which works with service workers
+  const context = await chromium.launchPersistentContext('', {
+    headless: false,
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
       '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--no-first-run',
-      // New headless mode supports extensions (Chrome 109+)
-      ...(headless ? ['--headless=new'] : [])
     ],
     timeout: 60000
   });
 
-  return { context, userDataDir };
+  return { context, userDataDir: null };
 }
 
 // Helper to get extension ID
 async function getExtensionId(context) {
-  // MV3 extensions use service workers, not background pages
-  // Try background pages first (MV2)
+  // MV3 extensions use service workers - check if already running
+  let serviceWorkers = context.serviceWorkers();
+  if (serviceWorkers.length > 0) {
+    const url = serviceWorkers[0].url();
+    const match = url.match(/chrome-extension:\/\/([^/]+)/);
+    if (match) {
+      console.log(`Found extension ID from service worker: ${match[1]}`);
+      return match[1];
+    }
+  }
+
+  // Open chrome://extensions and get extension ID from the page
+  const page = await context.newPage();
+  await page.goto('chrome://extensions');
+  await page.waitForTimeout(2000);
+
+  // Enable developer mode to see extension IDs
+  const devModeToggle = page.locator('#devMode');
+  try {
+    const isDevMode = await devModeToggle.isChecked();
+    if (!isDevMode) {
+      await devModeToggle.click();
+      await page.waitForTimeout(500);
+    }
+  } catch {
+    // Dev mode toggle might not be accessible
+  }
+
+  // Try to get extension ID from the extensions page
+  const extensionId = await page.evaluate(() => {
+    // Look for extension cards with our extension name
+    const manager = document.querySelector('extensions-manager');
+    if (!manager || !manager.shadowRoot) return null;
+
+    const itemList = manager.shadowRoot.querySelector('extensions-item-list');
+    if (!itemList || !itemList.shadowRoot) return null;
+
+    const items = itemList.shadowRoot.querySelectorAll('extensions-item');
+    for (const item of items) {
+      if (!item.shadowRoot) continue;
+      const name = item.shadowRoot.querySelector('#name');
+      if (name && name.textContent && name.textContent.includes('Wormhole')) {
+        // Found our extension - get the ID from the item's id attribute
+        return item.id;
+      }
+    }
+    return null;
+  });
+
+  if (extensionId) {
+    console.log(`Found extension ID from chrome://extensions: ${extensionId}`);
+    await page.close();
+    return extensionId;
+  }
+
+  // Check service workers again
+  serviceWorkers = context.serviceWorkers();
+  if (serviceWorkers.length > 0) {
+    const url = serviceWorkers[0].url();
+    const match = url.match(/chrome-extension:\/\/([^/]+)/);
+    if (match) {
+      console.log(`Found extension ID from service worker after page: ${match[1]}`);
+      await page.close();
+      return match[1];
+    }
+  }
+
+  // Fallback: Try background pages (MV2)
   const bgPages = context.backgroundPages();
   if (bgPages.length > 0) {
     const match = bgPages[0].url().match(/chrome-extension:\/\/([^/]+)/);
-    if (match) return match[1];
+    if (match) {
+      console.log(`Found extension ID from background page: ${match[1]}`);
+      await page.close();
+      return match[1];
+    }
   }
 
-  // Try waiting briefly for background page
-  try {
-    const bgPage = await context.waitForEvent('backgroundpage', { timeout: 3000 });
-    const match = bgPage.url().match(/chrome-extension:\/\/([^/]+)/);
-    if (match) return match[1];
-  } catch {
-    // MV3 - no background page
-  }
-
-  // For MV3, check service workers via chrome://serviceworker-internals
-  // or just try to access the extension directly
+  await page.close();
+  console.log('Could not find extension ID');
   return null;
 }
 
@@ -163,8 +216,9 @@ test.describe('Popup UI', () => {
     context = result.context;
     userDataDir = result.userDataDir;
 
-    await new Promise(r => setTimeout(r, 2000));
+    // getExtensionId has built-in retries
     extensionId = await getExtensionId(context);
+    console.log('Extension ID:', extensionId);
   });
 
   test.afterAll(async () => {
@@ -214,7 +268,7 @@ test.describe('Popup UI', () => {
     await expect(statusValue).toBeVisible();
 
     const statusText = await statusValue.textContent();
-    expect(['Connected', 'Not Running', 'Checking...']).toContain(statusText);
+    expect(['Connected', 'Not Running', 'Checking...', 'Ready (Standalone)']).toContain(statusText);
 
     await page.close();
   });
@@ -278,8 +332,9 @@ test.describe('Identity Management', () => {
     context = result.context;
     userDataDir = result.userDataDir;
 
-    await new Promise(r => setTimeout(r, 2000));
+    // getExtensionId has built-in retries
     extensionId = await getExtensionId(context);
+    console.log('Extension ID:', extensionId);
   });
 
   test.afterAll(async () => {
@@ -360,8 +415,9 @@ test.describe('Message Passing', () => {
     context = result.context;
     userDataDir = result.userDataDir;
 
-    await new Promise(r => setTimeout(r, 2000));
+    // getExtensionId has built-in retries
     extensionId = await getExtensionId(context);
+    console.log('Extension ID:', extensionId);
   });
 
   test.afterAll(async () => {

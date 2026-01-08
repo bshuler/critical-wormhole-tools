@@ -697,24 +697,16 @@ test.describe('Extension Standalone Test', () => {
 
     userDataDir = mkdtempSync(path.join(tmpdir(), 'playwright-standalone-'));
 
-    // Use headless mode by default, can be overridden with HEADFUL=1
-    const headless = !process.env.HEADFUL;
-
-    browserContext = await chromium.launchPersistentContext(userDataDir, {
-      channel: 'chrome',
-      headless: headless,
+    // Extensions require headed mode for service workers to be properly tracked by Playwright
+    browserContext = await chromium.launchPersistentContext('', {
+      headless: false,
       args: [
         `--disable-extensions-except=${extensionPath}`,
         `--load-extension=${extensionPath}`,
         '--no-sandbox',
-        '--no-first-run',
-        // New headless mode supports extensions (Chrome 109+)
-        ...(headless ? ['--headless=new'] : [])
       ],
       timeout: 60000
     });
-
-    await new Promise(r => setTimeout(r, 2000));
   });
 
   test.afterAll(async () => {
@@ -729,30 +721,26 @@ test.describe('Extension Standalone Test', () => {
   });
 
   test('extension loads and popup is functional', async () => {
-    // Get extension ID
+    // Get extension ID from service worker (MV3)
     let extensionId = null;
-    const bgPages = browserContext.backgroundPages();
+    let serviceWorkers = browserContext.serviceWorkers();
 
-    if (bgPages.length > 0) {
-      const url = bgPages[0].url();
-      const match = url.match(/chrome-extension:\/\/([^/]+)/);
+    if (serviceWorkers.length > 0) {
+      const match = serviceWorkers[0].url().match(/chrome-extension:\/\/([^/]+)/);
       extensionId = match ? match[1] : null;
     }
 
     if (!extensionId) {
       try {
-        const bgPage = await browserContext.waitForEvent('backgroundpage', { timeout: 10000 });
-        const match = bgPage.url().match(/chrome-extension:\/\/([^/]+)/);
+        const sw = await browserContext.waitForEvent('serviceworker', { timeout: 30000 });
+        const match = sw.url().match(/chrome-extension:\/\/([^/]+)/);
         extensionId = match ? match[1] : null;
       } catch {
-        // MV3 extensions use service workers, not background pages
-        // Try to find the extension ID from the pages
-        for (const page of browserContext.pages()) {
-          const match = page.url().match(/chrome-extension:\/\/([^/]+)/);
-          if (match) {
-            extensionId = match[1];
-            break;
-          }
+        // Fallback: try background pages (MV2)
+        const bgPages = browserContext.backgroundPages();
+        if (bgPages.length > 0) {
+          const match = bgPages[0].url().match(/chrome-extension:\/\/([^/]+)/);
+          extensionId = match ? match[1] : null;
         }
       }
     }
@@ -776,11 +764,28 @@ test.describe('Extension Standalone Test', () => {
 
   test('extension shows daemon status', async () => {
     let extensionId = null;
-    const bgPages = browserContext.backgroundPages();
 
-    if (bgPages.length > 0) {
-      const match = bgPages[0].url().match(/chrome-extension:\/\/([^/]+)/);
+    // Try service workers first (MV3)
+    let serviceWorkers = browserContext.serviceWorkers();
+    if (serviceWorkers.length > 0) {
+      const match = serviceWorkers[0].url().match(/chrome-extension:\/\/([^/]+)/);
       extensionId = match ? match[1] : null;
+    }
+
+    // Wait for service worker if not found
+    if (!extensionId) {
+      try {
+        const sw = await browserContext.waitForEvent('serviceworker', { timeout: 5000 });
+        const match = sw.url().match(/chrome-extension:\/\/([^/]+)/);
+        extensionId = match ? match[1] : null;
+      } catch {
+        // Try background pages as fallback (MV2)
+        const bgPages = browserContext.backgroundPages();
+        if (bgPages.length > 0) {
+          const match = bgPages[0].url().match(/chrome-extension:\/\/([^/]+)/);
+          extensionId = match ? match[1] : null;
+        }
+      }
     }
 
     if (!extensionId) {
@@ -799,7 +804,7 @@ test.describe('Extension Standalone Test', () => {
     const statusText = await statusValue.textContent();
 
     console.log('Daemon status:', statusText);
-    expect(['Connected', 'Not Running', 'Checking...']).toContain(statusText);
+    expect(['Connected', 'Not Running', 'Checking...', 'Ready (Standalone)']).toContain(statusText);
 
     await page.close();
   });
