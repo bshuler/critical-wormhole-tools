@@ -252,14 +252,31 @@ npm run test:all
 
 ### Test Structure
 
+The extension has **552 passing tests** covering all major components:
+
 ```
 tests/
-├── unit/              # Unit tests for individual modules
-│   ├── crypto/        # Crypto module tests (246 tests)
-│   ├── wns/           # WNS module tests
-│   └── protocol/      # Protocol module tests
-├── functional/        # Integration tests with mock servers
-└── e2e/               # Playwright browser tests
+├── unit/                    # Unit tests for individual modules
+│   ├── crypto/              # Crypto module tests
+│   │   ├── hkdf.test.js     # HKDF key derivation (57 tests)
+│   │   ├── nacl.test.js     # NaCl encryption (54 tests)
+│   │   ├── ed25519.test.js  # Ed25519 signatures (52 tests)
+│   │   ├── hash.test.js     # SHA-256 hashing (44 tests)
+│   │   ├── subkey.test.js   # Subkey derivation (39 tests)
+│   │   └── spake2.test.js   # SPAKE2 key exchange (27 tests)
+│   ├── protocol/            # Protocol module tests
+│   │   ├── mailbox.test.js  # Mailbox protocol (36 tests)
+│   │   ├── wormhole.test.js # Wormhole state machine (31 tests)
+│   │   └── transit.test.js  # WebRTC transit (37 tests)
+│   ├── wns/                 # WNS module tests
+│   │   └── *.test.js        # Name service tests
+│   ├── background.test.js   # Background script (48 tests)
+│   ├── viewer.test.js       # Viewer page (80+ tests)
+│   └── dilation.test.js     # Dilation protocol (100+ tests)
+├── functional/              # Integration tests with mock servers
+│   └── wormhole-flow.test.js
+└── e2e/                     # Playwright browser tests
+    └── viewer-navigation.test.js
 ```
 
 ### Linting
