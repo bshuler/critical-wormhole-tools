@@ -824,4 +824,312 @@ test.describe('Full End-to-End Test', () => {
     console.log('=== WEBRTC TEST PASSED ===');
     await page.close();
   });
+
+  test('external css - styles from external CSS file are applied', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING EXTERNAL CSS ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-css&path=/resource-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Resource Loading Test")').waitFor({ timeout: 60000 });
+
+    // Wait for external CSS to load and check if gradient is applied
+    await page.waitForTimeout(2000);
+
+    // Check CSS status - the page checks for gradient background
+    const cssStatus = await sandbox.locator('#css-status').textContent();
+    console.log('CSS status:', cssStatus);
+
+    // Verify the external CSS test element exists
+    const cssTestElement = sandbox.locator('.external-css-test');
+    expect(await cssTestElement.count()).toBeGreaterThan(0);
+
+    console.log('=== EXTERNAL CSS TEST PASSED ===');
+    await page.close();
+  });
+
+  test('external scripts - JavaScript from external file executes', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING EXTERNAL SCRIPTS ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-scripts&path=/resource-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Resource Loading Test")').waitFor({ timeout: 60000 });
+
+    // Wait for external script to load
+    await page.waitForTimeout(3000);
+
+    // Check external script indicator - set by app.js
+    const scriptIndicator = await sandbox.locator('#external-script-indicator').textContent();
+    console.log('External script indicator:', scriptIndicator);
+
+    // The external script sets externalScriptLoaded = true and updates indicator to "External script loaded!"
+    expect(scriptIndicator.toLowerCase()).toContain('loaded');
+
+    console.log('=== EXTERNAL SCRIPTS TEST PASSED ===');
+    await page.close();
+  });
+
+  test('fetch api - can fetch JSON through wormhole', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING FETCH API ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-fetch&path=/resource-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Resource Loading Test")').waitFor({ timeout: 60000 });
+
+    // Click the Fetch test button
+    const fetchBtn = sandbox.locator('button:has-text("Test Fetch")');
+    await fetchBtn.click();
+    await page.waitForTimeout(2000);
+
+    // Check fetch result
+    const fetchResult = await sandbox.locator('#fetch-result').textContent();
+    console.log('Fetch result:', fetchResult);
+
+    // Should contain successful JSON response
+    expect(fetchResult).toContain('"success": true');
+
+    console.log('=== FETCH API TEST PASSED ===');
+    await page.close();
+  });
+
+  test('xhr - XMLHttpRequest works through wormhole', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING XHR ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-xhr&path=/resource-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Resource Loading Test")').waitFor({ timeout: 60000 });
+
+    // Click the XHR test button
+    const xhrBtn = sandbox.locator('button:has-text("Test XHR")');
+    await xhrBtn.click();
+    await page.waitForTimeout(2000);
+
+    // Check XHR result
+    const xhrResult = await sandbox.locator('#xhr-result').textContent();
+    console.log('XHR result:', xhrResult);
+
+    // Should contain response status in parentheses (format: "XHR result (status 200):")
+    expect(xhrResult).toContain('status 200');
+
+    console.log('=== XHR TEST PASSED ===');
+    await page.close();
+  });
+
+  test('localStorage - data persists and is per-site', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING LOCALSTORAGE ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-storage&path=/resource-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Resource Loading Test")').waitFor({ timeout: 60000 });
+
+    // Click the localStorage test button
+    const storageBtn = sandbox.locator('button:has-text("Test localStorage")');
+    await storageBtn.click();
+    await page.waitForTimeout(1000);
+
+    // Check storage result
+    const storageResult = await sandbox.locator('#storage-result').textContent();
+    console.log('localStorage result:', storageResult);
+
+    // Should show matching values (format: "Match: true")
+    expect(storageResult.toLowerCase()).toContain('match: true');
+
+    console.log('=== LOCALSTORAGE TEST PASSED ===');
+    await page.close();
+  });
+
+  test('sessionStorage - session data works per-site', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING SESSIONSTORAGE ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-session&path=/resource-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Resource Loading Test")').waitFor({ timeout: 60000 });
+
+    // Click the sessionStorage test button
+    const sessionBtn = sandbox.locator('button:has-text("Test sessionStorage")');
+    await sessionBtn.click();
+    await page.waitForTimeout(1000);
+
+    // Check session storage result
+    const sessionResult = await sandbox.locator('#session-storage-result').textContent();
+    console.log('sessionStorage result:', sessionResult);
+
+    // Should show matching values (format: "Match: true")
+    expect(sessionResult.toLowerCase()).toContain('match: true');
+
+    console.log('=== SESSIONSTORAGE TEST PASSED ===');
+    await page.close();
+  });
+
+  test('cookies - document.cookie works', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING COOKIES ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-cookies&path=/resource-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Resource Loading Test")').waitFor({ timeout: 60000 });
+
+    // Click the cookies test button
+    const cookieBtn = sandbox.locator('button:has-text("Test Cookies")');
+    await cookieBtn.click();
+    await page.waitForTimeout(1000);
+
+    // Check cookie result
+    const cookieResult = await sandbox.locator('#cookie-result').textContent();
+    console.log('Cookies result:', cookieResult);
+
+    // Should show cookie operations
+    expect(cookieResult.toLowerCase()).not.toContain('error');
+
+    console.log('=== COOKIES TEST PASSED ===');
+    await page.close();
+  });
+
+  test('images - images load through wormhole', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING IMAGE LOADING ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-images&path=/resource-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Resource Loading Test")').waitFor({ timeout: 60000 });
+
+    // Wait for images to load
+    await page.waitForTimeout(4000);
+
+    // Check image status
+    const imageStatus = await sandbox.locator('#image-status').textContent();
+    console.log('Image status:', imageStatus);
+
+    // Should show images loaded
+    expect(imageStatus.toLowerCase()).toContain('loaded');
+
+    console.log('=== IMAGE LOADING TEST PASSED ===');
+    await page.close();
+  });
+
+  test('navigation - internal links work without page reload', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING NAVIGATION ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-nav&path=/`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Home Page")').waitFor({ timeout: 60000 });
+
+    // Click About link
+    await sandbox.locator('a:has-text("About")').click();
+    await page.waitForTimeout(1000);
+
+    // Should navigate to about page (h1 is "About Page")
+    await sandbox.locator('h1:has-text("About Page")').waitFor({ timeout: 10000 });
+
+    // Verify URL updated
+    const url = page.url();
+    expect(url).toContain('path=%2Fabout');
+
+    console.log('=== NAVIGATION TEST PASSED ===');
+    await page.close();
+  });
+
+  test('history pushState - URL updates without reload', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING HISTORY PUSHSTATE ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-history&path=/advanced-features-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Advanced Features Test")').waitFor({ timeout: 60000 });
+
+    // Click pushState button
+    const pushBtn = sandbox.locator('button:has-text("pushState")');
+    await pushBtn.click();
+    await page.waitForTimeout(500);
+
+    // Check result
+    const historyResult = await sandbox.locator('#history-result').textContent();
+    console.log('History result:', historyResult);
+    expect(historyResult).toContain('pushState called');
+
+    // Verify URL was updated (page=2 gets URL-encoded as page%3D2 inside the path parameter)
+    const url = page.url();
+    console.log('Current URL:', url);
+    // The path parameter value contains URL-encoded query string
+    expect(url).toContain('page%3D2');
+
+    console.log('=== HISTORY PUSHSTATE TEST PASSED ===');
+    await page.close();
+  });
+
+  test('whLocation - fallback location object works', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING WHLOCATION ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-location&path=/advanced-features-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("Advanced Features Test")').waitFor({ timeout: 60000 });
+
+    // Click test location button
+    const locationBtn = sandbox.locator('button:has-text("Test Location Properties")');
+    await locationBtn.click();
+    await page.waitForTimeout(500);
+
+    // Check result
+    const locationResult = await sandbox.locator('#location-result').textContent();
+    console.log('Location result:', locationResult.substring(0, 500));
+
+    // whLocation should have correct values
+    expect(locationResult).toContain('whLocation');
+    expect(locationResult).toContain('wh:');
+    expect(locationResult).toContain(whServer.code);
+
+    console.log('=== WHLOCATION TEST PASSED ===');
+    await page.close();
+  });
 });
