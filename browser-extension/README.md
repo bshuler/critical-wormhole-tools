@@ -338,12 +338,86 @@ The extension implements the complete Magic Wormhole protocol:
 - Signed code advertisements
 - DHT-based discovery (planned)
 
+## Web API Support
+
+The extension runs wormhole pages in a sandboxed iframe with extensive API proxying to provide a native-like browsing experience. Here's what works and what doesn't:
+
+### Fully Working
+
+| Feature | Notes |
+|---------|-------|
+| **External Resources** | CSS, JavaScript, images all load through wormhole |
+| **fetch() / XHR** | All requests routed through wormhole connection |
+| **localStorage** | Per-site storage persisted via extension storage |
+| **sessionStorage** | Per-site session storage |
+| **Cookies** | document.cookie proxy with per-site storage |
+| **Forms** | Form submission with file upload support |
+| **Navigation** | Internal links, hash navigation, history |
+| **Nested Iframes** | Iframes load content through wormhole |
+| **WebSockets** | Proxy class (requires server-side protocol support) |
+| **Web Workers** | Workers load scripts through wormhole |
+| **IndexedDB** | Per-site mock database synced to extension storage |
+| **history.pushState/replaceState** | Full History API support |
+| **window.open()** | Opens internal paths in new viewer tabs |
+
+### Partially Working
+
+| Feature | Notes |
+|---------|-------|
+| **window.location** | `window.whLocation` always works; native `window.location` override works in some contexts. Use `whLocation` for reliable access. |
+| **Geolocation** | Works, but permission dialog shows extension origin |
+| **Notifications** | Works, prefixes title with wormhole address |
+| **Clipboard API** | Proxied, permission shows extension origin |
+| **getUserMedia** | Camera/microphone proxied, permission shows extension origin |
+| **WebRTC** | Signaling can be proxied; media streams need TURN server |
+
+### Not Supported
+
+| Feature | Reason |
+|---------|--------|
+| **Service Workers** | Cannot register for external origins in sandboxed iframe |
+| **Background Sync** | Requires Service Worker |
+| **Push Notifications** | Requires Service Worker |
+| **Payment Request API** | Requires secure origin |
+| **Web Bluetooth/USB/NFC** | Requires secure origin and hardware access |
+
+### Example: Using Location
+
+```javascript
+// Reliable way to get wormhole location
+if (window.whLocation) {
+  console.log(whLocation.href);     // "wh://7-guitar-sunset/page"
+  console.log(whLocation.pathname); // "/page"
+  console.log(whLocation.host);     // "7-guitar-sunset"
+  console.log(whLocation.protocol); // "wh:"
+
+  whLocation.assign('/other-page'); // Navigate
+  whLocation.reload();               // Refresh
+}
+```
+
+### Example: Fetch through Wormhole
+
+```javascript
+// All fetch requests automatically route through wormhole
+const response = await fetch('/api/data.json');
+const data = await response.json();
+
+// POST requests work too
+await fetch('/api/submit', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'test' })
+});
+```
+
 ## Security
 
 - **End-to-End Encryption**: All data encrypted with NaCl (XSalsa20-Poly1305)
 - **PAKE Authentication**: No passwords sent over the network
 - **Forward Secrecy**: Unique session keys for each connection
 - **Code Verification**: Visual verifier display for manual confirmation
+- **Sandboxed Execution**: All page content runs in sandboxed iframe with CSP
 
 ## Browser Compatibility
 

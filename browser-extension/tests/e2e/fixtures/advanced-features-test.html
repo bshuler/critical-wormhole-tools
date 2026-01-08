@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Advanced Features Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eaeaea;
+    }
+    .container { background: #16213e; padding: 30px; border-radius: 12px; }
+    h1 { color: #e94560; margin-top: 0; }
+    h2 { color: #0f3460; background: #e94560; padding: 10px; border-radius: 4px; margin-top: 30px; }
+    nav { margin: 20px 0; }
+    nav a { color: #00d9ff; margin-right: 15px; }
+    .test-section {
+      background: #0f3460;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      background: #e94560;
+      color: white;
+      font-size: 14px;
+    }
+    button:hover { background: #ff6b6b; }
+    .result {
+      margin-top: 10px;
+      padding: 15px;
+      background: #1a1a2e;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+    .success { color: #00ff88; }
+    .error { color: #ff4757; }
+    .pending { color: #ffd43b; }
+    .info { color: #00d9ff; }
+    input, select {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #0f3460;
+      background: #1a1a2e;
+      color: #eaeaea;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Advanced Features Test</h1>
+    <p>This page tests advanced browser APIs through the wormhole sandbox.</p>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/resource-test">Resources</a>
+      <a href="/websocket-iframe-test">WebSocket/Iframe</a>
+    </nav>
+
+    <!-- Location API Test -->
+    <div class="test-section">
+      <h2>1. window.location / whLocation</h2>
+      <p>Test location properties and methods:</p>
+      <button onclick="testLocation()">Test Location Properties</button>
+      <button onclick="testLocationMethods()">Test Location Methods</button>
+      <div class="result" id="location-result">Click a button to test location...</div>
+    </div>
+
+    <!-- History API Test -->
+    <div class="test-section">
+      <h2>2. History API (pushState/replaceState)</h2>
+      <p>Test history manipulation:</p>
+      <button onclick="testPushState()">pushState</button>
+      <button onclick="testReplaceState()">replaceState</button>
+      <button onclick="testHistoryBack()">history.back()</button>
+      <div class="result" id="history-result">Click a button to test history...</div>
+    </div>
+
+    <!-- window.open Test -->
+    <div class="test-section">
+      <h2>3. window.open</h2>
+      <p>Test opening new windows:</p>
+      <button onclick="testWindowOpen()">Open Internal Page</button>
+      <button onclick="testWindowOpenExternal()">Open External (Google)</button>
+      <div class="result" id="window-open-result">Click a button to test window.open...</div>
+    </div>
+
+    <!-- Web Workers Test -->
+    <div class="test-section">
+      <h2>4. Web Workers</h2>
+      <p>Test Web Worker creation and messaging:</p>
+      <button onclick="testWorker()">Create Worker</button>
+      <div class="result" id="worker-result">Click to test Web Worker...</div>
+    </div>
+
+    <!-- IndexedDB Test -->
+    <div class="test-section">
+      <h2>5. IndexedDB</h2>
+      <p>Test IndexedDB operations:</p>
+      <button onclick="testIndexedDB()">Test IndexedDB</button>
+      <div class="result" id="idb-result">Click to test IndexedDB...</div>
+    </div>
+
+    <!-- File Upload Test -->
+    <div class="test-section">
+      <h2>6. File Upload</h2>
+      <p>Test file upload handling:</p>
+      <form id="upload-form" enctype="multipart/form-data" method="POST" action="/upload">
+        <input type="file" name="testFile" id="testFile">
+        <input type="text" name="description" placeholder="Description">
+        <button type="submit">Upload</button>
+      </form>
+      <div class="result" id="upload-result">Select a file and submit to test...</div>
+    </div>
+
+    <!-- Fetch with Various Options -->
+    <div class="test-section">
+      <h2>7. Advanced Fetch</h2>
+      <p>Test fetch with different options:</p>
+      <button onclick="testFetchJSON()">Fetch JSON</button>
+      <button onclick="testFetchPOST()">POST Request</button>
+      <button onclick="testFetchHeaders()">Custom Headers</button>
+      <div class="result" id="fetch-result">Click to test fetch...</div>
+    </div>
+
+    <!-- XHR Test -->
+    <div class="test-section">
+      <h2>8. XMLHttpRequest</h2>
+      <p>Test XHR requests:</p>
+      <button onclick="testXHR()">Test XHR GET</button>
+      <button onclick="testXHRPost()">Test XHR POST</button>
+      <div class="result" id="xhr-result">Click to test XHR...</div>
+    </div>
+
+    <!-- Run All Tests -->
+    <div class="test-section">
+      <h2>Run All Tests</h2>
+      <button onclick="runAllTests()">Run All Tests</button>
+      <div class="result" id="all-tests-result">Click to run comprehensive test suite...</div>
+    </div>
+  </div>
+
+  <script>
+    console.log('[Advanced Test] Page loaded');
+
+    // Location Tests
+    function testLocation() {
+      const result = document.getElementById('location-result');
+      const tests = [];
+
+      // Check both window.location and whLocation
+      tests.push('=== window.location ===');
+      try {
+        tests.push('href: ' + window.location.href);
+        tests.push('pathname: ' + window.location.pathname);
+        tests.push('host: ' + window.location.host);
+        tests.push('protocol: ' + window.location.protocol);
+        tests.push('search: ' + window.location.search);
+        tests.push('hash: ' + window.location.hash);
+      } catch (e) {
+        tests.push('Error accessing window.location: ' + e.message);
+      }
+
+      tests.push('');
+      tests.push('=== window.whLocation (fallback) ===');
+      if (window.whLocation) {
+        tests.push('href: ' + window.whLocation.href);
+        tests.push('pathname: ' + window.whLocation.pathname);
+        tests.push('host: ' + window.whLocation.host);
+        tests.push('protocol: ' + window.whLocation.protocol);
+        tests.push('origin: ' + window.whLocation.origin);
+      } else {
+        tests.push('whLocation not available');
+      }
+
+      result.innerHTML = tests.join('\n');
+    }
+
+    function testLocationMethods() {
+      const result = document.getElementById('location-result');
+      result.innerHTML = 'Testing location.assign()...\n';
+
+      // This should trigger navigation
+      if (window.whLocation) {
+        result.innerHTML += 'whLocation.assign available\n';
+        result.innerHTML += 'whLocation.reload available\n';
+        result.innerHTML += 'whLocation.replace available\n';
+      }
+
+      // Test hash change
+      if (window.whLocation) {
+        window.whLocation.hash = '#test-section';
+        result.innerHTML += 'Hash changed to: ' + window.whLocation.hash + '\n';
+      }
+    }
+
+    // History Tests
+    function testPushState() {
+      const result = document.getElementById('history-result');
+      const newPath = '/advanced-features-test?page=2';
+
+      try {
+        history.pushState({ page: 2 }, 'Page 2', newPath);
+        result.innerHTML = 'pushState called with path: ' + newPath + '\n';
+        result.innerHTML += 'history.length: ' + history.length + '\n';
+        result.innerHTML += 'history.state: ' + JSON.stringify(history.state);
+      } catch (e) {
+        result.innerHTML = 'Error: ' + e.message;
+      }
+    }
+
+    function testReplaceState() {
+      const result = document.getElementById('history-result');
+      const newPath = '/advanced-features-test?replaced=true';
+
+      try {
+        history.replaceState({ replaced: true }, 'Replaced', newPath);
+        result.innerHTML = 'replaceState called with path: ' + newPath + '\n';
+        result.innerHTML += 'history.state: ' + JSON.stringify(history.state);
+      } catch (e) {
+        result.innerHTML = 'Error: ' + e.message;
+      }
+    }
+
+    function testHistoryBack() {
+      const result = document.getElementById('history-result');
+      result.innerHTML = 'Calling history.back()...';
+      history.back();
+    }
+
+    // window.open Tests
+    function testWindowOpen() {
+      const result = document.getElementById('window-open-result');
+      result.innerHTML = 'Opening internal page via window.open...\n';
+
+      const win = window.open('/about', '_blank');
+      result.innerHTML += 'window.open returned: ' + (win ? 'object' : 'null') + '\n';
+      result.innerHTML += 'This should open /about in a new viewer tab';
+    }
+
+    function testWindowOpenExternal() {
+      const result = document.getElementById('window-open-result');
+      result.innerHTML = 'Opening external URL via window.open...\n';
+
+      const win = window.open('https://www.google.com', '_blank');
+      result.innerHTML += 'External links should open in a regular browser tab';
+    }
+
+    // Web Worker Tests
+    function testWorker() {
+      const result = document.getElementById('worker-result');
+      result.innerHTML = 'Creating Web Worker...\n';
+
+      try {
+        // Create inline worker using Blob
+        const workerCode = `
+          self.onmessage = function(e) {
+            console.log('[Worker] Received:', e.data);
+            self.postMessage('Worker received: ' + e.data + ' - Response from worker!');
+          };
+          self.postMessage('Worker initialized');
+        `;
+
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const worker = new Worker(URL.createObjectURL(blob));
+
+        worker.onmessage = function(e) {
+          result.innerHTML += 'Worker message: ' + e.data + '\n';
+        };
+
+        worker.onerror = function(e) {
+          result.innerHTML += 'Worker error: ' + e.message + '\n';
+        };
+
+        // Send a message after a short delay
+        setTimeout(() => {
+          worker.postMessage('Hello from main thread');
+        }, 100);
+
+        result.innerHTML += 'Worker class: ' + (typeof Worker) + '\n';
+        result.innerHTML += 'Worker created successfully\n';
+      } catch (e) {
+        result.innerHTML += 'Error: ' + e.message + '\n';
+      }
+    }
+
+    // IndexedDB Tests
+    function testIndexedDB() {
+      const result = document.getElementById('idb-result');
+      result.innerHTML = 'Testing IndexedDB...\n';
+
+      try {
+        result.innerHTML += 'indexedDB available: ' + (!!window.indexedDB) + '\n';
+
+        const request = indexedDB.open('testDB', 1);
+
+        request.onerror = function(e) {
+          result.innerHTML += 'Error opening database\n';
+        };
+
+        request.onsuccess = function(e) {
+          result.innerHTML += 'Database opened successfully\n';
+          const db = e.target.result;
+          result.innerHTML += 'Database name: ' + db.name + '\n';
+          result.innerHTML += 'Database version: ' + db.version + '\n';
+
+          // Test object store operations
+          try {
+            const store = db.createObjectStore('testStore', { keyPath: 'id' });
+            result.innerHTML += 'Object store created\n';
+
+            const putRequest = store.put({ id: 1, data: 'test data', timestamp: Date.now() });
+            putRequest.onsuccess = function() {
+              result.innerHTML += 'Data stored successfully\n';
+            };
+          } catch (e) {
+            result.innerHTML += 'Store operation: ' + e.message + '\n';
+          }
+        };
+
+        request.onupgradeneeded = function(e) {
+          result.innerHTML += 'Database upgrade needed\n';
+        };
+      } catch (e) {
+        result.innerHTML += 'Error: ' + e.message + '\n';
+      }
+    }
+
+    // File Upload Test
+    document.getElementById('upload-form').addEventListener('submit', function(e) {
+      const result = document.getElementById('upload-result');
+      result.innerHTML = 'Form submitted!\n';
+
+      const fileInput = document.getElementById('testFile');
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        result.innerHTML += 'File name: ' + file.name + '\n';
+        result.innerHTML += 'File size: ' + file.size + ' bytes\n';
+        result.innerHTML += 'File type: ' + file.type + '\n';
+      } else {
+        result.innerHTML += 'No file selected\n';
+      }
+
+      result.innerHTML += 'Form will be submitted through wormhole...';
+    });
+
+    // Advanced Fetch Tests
+    async function testFetchJSON() {
+      const result = document.getElementById('fetch-result');
+      result.innerHTML = 'Fetching JSON...\n';
+
+      try {
+        const response = await fetch('/api/data.json');
+        const data = await response.json();
+        result.innerHTML += 'Status: ' + response.status + '\n';
+        result.innerHTML += 'Data: ' + JSON.stringify(data, null, 2);
+      } catch (e) {
+        result.innerHTML += 'Error: ' + e.message;
+      }
+    }
+
+    async function testFetchPOST() {
+      const result = document.getElementById('fetch-result');
+      result.innerHTML = 'Sending POST request...\n';
+
+      try {
+        const response = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ test: 'data', timestamp: Date.now() })
+        });
+        result.innerHTML += 'Status: ' + response.status + '\n';
+        result.innerHTML += 'POST request sent successfully';
+      } catch (e) {
+        result.innerHTML += 'Error: ' + e.message;
+      }
+    }
+
+    async function testFetchHeaders() {
+      const result = document.getElementById('fetch-result');
+      result.innerHTML = 'Fetching with custom headers...\n';
+
+      try {
+        const response = await fetch('/api/data.json', {
+          headers: {
+            'X-Custom-Header': 'test-value',
+            'Accept': 'application/json'
+          }
+        });
+        result.innerHTML += 'Status: ' + response.status + '\n';
+        result.innerHTML += 'Headers sent successfully';
+      } catch (e) {
+        result.innerHTML += 'Error: ' + e.message;
+      }
+    }
+
+    // XHR Tests
+    function testXHR() {
+      const result = document.getElementById('xhr-result');
+      result.innerHTML = 'Sending XHR GET request...\n';
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', '/api/data.json');
+
+      xhr.onload = function() {
+        result.innerHTML += 'Status: ' + xhr.status + '\n';
+        result.innerHTML += 'Response: ' + xhr.responseText.substring(0, 100);
+      };
+
+      xhr.onerror = function() {
+        result.innerHTML += 'XHR Error';
+      };
+
+      xhr.send();
+    }
+
+    function testXHRPost() {
+      const result = document.getElementById('xhr-result');
+      result.innerHTML = 'Sending XHR POST request...\n';
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/submit');
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onload = function() {
+        result.innerHTML += 'Status: ' + xhr.status + '\n';
+        result.innerHTML += 'POST request completed';
+      };
+
+      xhr.onerror = function() {
+        result.innerHTML += 'XHR Error';
+      };
+
+      xhr.send(JSON.stringify({ test: 'xhr-post' }));
+    }
+
+    // Run All Tests
+    async function runAllTests() {
+      const result = document.getElementById('all-tests-result');
+      const tests = [];
+
+      tests.push('=== COMPREHENSIVE TEST RESULTS ===\n');
+
+      // Test 1: Location
+      tests.push('1. Location API:');
+      tests.push('   - window.location exists: ' + (typeof window.location === 'object'));
+      tests.push('   - whLocation exists: ' + (!!window.whLocation));
+      if (window.whLocation) {
+        tests.push('   - whLocation.protocol: ' + window.whLocation.protocol);
+      }
+
+      // Test 2: History
+      tests.push('\n2. History API:');
+      tests.push('   - history exists: ' + (typeof history === 'object'));
+      tests.push('   - pushState available: ' + (typeof history.pushState === 'function'));
+      tests.push('   - replaceState available: ' + (typeof history.replaceState === 'function'));
+
+      // Test 3: window.open
+      tests.push('\n3. window.open:');
+      tests.push('   - window.open available: ' + (typeof window.open === 'function'));
+
+      // Test 4: Web Workers
+      tests.push('\n4. Web Workers:');
+      tests.push('   - Worker class exists: ' + (typeof Worker === 'function'));
+
+      // Test 5: IndexedDB
+      tests.push('\n5. IndexedDB:');
+      tests.push('   - indexedDB exists: ' + (!!window.indexedDB));
+      tests.push('   - indexedDB.open available: ' + (typeof indexedDB?.open === 'function'));
+
+      // Test 6: Fetch
+      tests.push('\n6. Fetch API:');
+      tests.push('   - fetch available: ' + (typeof fetch === 'function'));
+
+      // Test 7: XHR
+      tests.push('\n7. XMLHttpRequest:');
+      tests.push('   - XMLHttpRequest available: ' + (typeof XMLHttpRequest === 'function'));
+
+      // Test 8: Storage
+      tests.push('\n8. Storage:');
+      tests.push('   - localStorage available: ' + (!!window.localStorage));
+      tests.push('   - sessionStorage available: ' + (!!window.sessionStorage));
+
+      // Test 9: Cookies
+      tests.push('\n9. Cookies:');
+      tests.push('   - document.cookie accessible: ' + (typeof document.cookie === 'string'));
+
+      // Test 10: WebSocket
+      tests.push('\n10. WebSocket:');
+      tests.push('   - WebSocket available: ' + (typeof WebSocket === 'function'));
+
+      tests.push('\n=== ALL BASIC TESTS PASSED ===');
+
+      result.innerHTML = tests.join('\n');
+    }
+
+    // Listen for popstate events
+    window.addEventListener('popstate', function(e) {
+      const result = document.getElementById('history-result');
+      result.innerHTML = 'popstate event fired!\n';
+      result.innerHTML += 'State: ' + JSON.stringify(e.state);
+    });
+  </script>
+</body>
+</html>

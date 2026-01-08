@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Forms Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f0f4f8;
+    }
+    .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    h1 { color: #2c3e50; margin-top: 0; }
+    h3 { color: #3498db; }
+    nav { margin: 20px 0; }
+    nav a { color: #3498db; margin-right: 15px; text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    .form-card {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border: 1px solid #e9ecef;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-weight: 600;
+      color: #495057;
+    }
+    input[type="text"], input[type="email"], input[type="password"],
+    input[type="number"], input[type="search"], input[type="url"],
+    textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52,152,219,0.2);
+    }
+    button[type="submit"], input[type="submit"] {
+      background: #3498db;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-top: 15px;
+    }
+    button[type="submit"]:hover { background: #2980b9; }
+    .checkbox-group, .radio-group {
+      margin: 10px 0;
+    }
+    .checkbox-group label, .radio-group label {
+      display: inline;
+      margin-left: 5px;
+      font-weight: normal;
+    }
+    .result-box {
+      margin-top: 15px;
+      padding: 15px;
+      background: #e8f4fd;
+      border-radius: 4px;
+      border: 1px solid #bee5eb;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Forms Test Page</h1>
+    <p>Testing form handling within wormhole pages.</p>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/javascript-test">JS Tests</a>
+      <a href="/edge-cases">Edge Cases</a>
+    </nav>
+
+    <div class="warning">
+      Note: Form submissions are intercepted by the viewer and sent through the wormhole.
+      Check the result boxes to see what data would be submitted.
+    </div>
+
+    <!-- GET Form -->
+    <div class="form-card">
+      <h3>1. GET Form (Search)</h3>
+      <form id="get-form" action="/search" method="GET">
+        <label for="search">Search Query:</label>
+        <input type="search" id="search" name="q" placeholder="Enter search term...">
+
+        <label for="category">Category:</label>
+        <select id="category" name="category">
+          <option value="">All Categories</option>
+          <option value="docs">Documentation</option>
+          <option value="code">Code</option>
+          <option value="issues">Issues</option>
+        </select>
+
+        <button type="submit">Search</button>
+      </form>
+      <div class="result-box" id="get-result">Form not submitted</div>
+    </div>
+
+    <!-- POST Form -->
+    <div class="form-card">
+      <h3>2. POST Form (Contact)</h3>
+      <form id="post-form" action="/api/contact" method="POST">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="subject">Subject:</label>
+        <input type="text" id="subject" name="subject">
+
+        <label for="message">Message:</label>
+        <textarea id="message" name="message" rows="4"></textarea>
+
+        <div class="checkbox-group">
+          <input type="checkbox" id="newsletter" name="newsletter" value="yes">
+          <label for="newsletter">Subscribe to newsletter</label>
+        </div>
+
+        <button type="submit">Send Message</button>
+      </form>
+      <div class="result-box" id="post-result">Form not submitted</div>
+    </div>
+
+    <!-- Form with Various Input Types -->
+    <div class="form-card">
+      <h3>3. Various Input Types</h3>
+      <form id="variety-form" action="/api/variety" method="POST">
+        <label for="username">Text Input:</label>
+        <input type="text" id="username" name="username" placeholder="Username">
+
+        <label for="pwd">Password Input:</label>
+        <input type="password" id="pwd" name="password" placeholder="Password">
+
+        <label for="age">Number Input:</label>
+        <input type="number" id="age" name="age" min="0" max="150">
+
+        <label for="website">URL Input:</label>
+        <input type="url" id="website" name="website" placeholder="https://example.com">
+
+        <label for="color">Color Input:</label>
+        <input type="color" id="color" name="color" value="#3498db">
+
+        <label for="date">Date Input:</label>
+        <input type="date" id="date" name="date">
+
+        <label for="range">Range Input:</label>
+        <input type="range" id="range" name="range" min="0" max="100" value="50">
+        <span id="range-value">50</span>
+
+        <label>Radio Buttons:</label>
+        <div class="radio-group">
+          <input type="radio" id="opt1" name="option" value="option1">
+          <label for="opt1">Option 1</label>
+          <input type="radio" id="opt2" name="option" value="option2">
+          <label for="opt2">Option 2</label>
+          <input type="radio" id="opt3" name="option" value="option3">
+          <label for="opt3">Option 3</label>
+        </div>
+
+        <label>Checkboxes:</label>
+        <div class="checkbox-group">
+          <input type="checkbox" id="feat1" name="features" value="feature1">
+          <label for="feat1">Feature 1</label>
+          <input type="checkbox" id="feat2" name="features" value="feature2">
+          <label for="feat2">Feature 2</label>
+          <input type="checkbox" id="feat3" name="features" value="feature3">
+          <label for="feat3">Feature 3</label>
+        </div>
+
+        <button type="submit">Submit All</button>
+      </form>
+      <div class="result-box" id="variety-result">Form not submitted</div>
+    </div>
+
+    <!-- Form with JavaScript Submit -->
+    <div class="form-card">
+      <h3>4. JavaScript Form Submit</h3>
+      <form id="js-form" action="/api/js-submit" method="POST">
+        <label for="data">Data:</label>
+        <input type="text" id="data" name="data" placeholder="Enter data">
+
+        <button type="button" onclick="submitViaJs()">Submit via JS</button>
+        <button type="submit">Normal Submit</button>
+      </form>
+      <div class="result-box" id="js-result">Form not submitted</div>
+    </div>
+
+    <!-- Form without Action (submits to self) -->
+    <div class="form-card">
+      <h3>5. Form Without Action</h3>
+      <form id="self-form" method="POST">
+        <label for="self-input">Input:</label>
+        <input type="text" id="self-input" name="input">
+        <button type="submit">Submit to Self</button>
+      </form>
+      <div class="result-box" id="self-result">Form not submitted</div>
+    </div>
+  </div>
+
+  <script>
+    console.log('[Forms Test] Page loaded');
+
+    // Update range value display
+    document.getElementById('range').addEventListener('input', function() {
+      document.getElementById('range-value').textContent = this.value;
+    });
+
+    // Intercept all form submissions to show what would be sent
+    document.querySelectorAll('form').forEach(form => {
+      form.addEventListener('submit', function(e) {
+        // Don't actually prevent - let the viewer handle it
+        // But show what data would be submitted
+
+        const formData = new FormData(this);
+        const data = {};
+        for (const [key, value] of formData.entries()) {
+          if (data[key]) {
+            // Handle multiple values (checkboxes)
+            if (Array.isArray(data[key])) {
+              data[key].push(value);
+            } else {
+              data[key] = [data[key], value];
+            }
+          } else {
+            data[key] = value;
+          }
+        }
+
+        const resultId = this.id.replace('-form', '-result');
+        const resultEl = document.getElementById(resultId);
+        if (resultEl) {
+          resultEl.textContent = 'Form submitted!\n' +
+            'Action: ' + (this.action || window.location.href) + '\n' +
+            'Method: ' + (this.method || 'GET').toUpperCase() + '\n' +
+            'Data: ' + JSON.stringify(data, null, 2);
+        }
+
+        console.log('[Forms Test] Form submitted:', {
+          action: this.action,
+          method: this.method,
+          data: data
+        });
+      });
+    });
+
+    // JavaScript submit function
+    function submitViaJs() {
+      const form = document.getElementById('js-form');
+      const formData = new FormData(form);
+      const data = {};
+      for (const [key, value] of formData.entries()) {
+        data[key] = value;
+      }
+
+      document.getElementById('js-result').textContent =
+        'JS Submit called!\n' +
+        'Would submit to: ' + form.action + '\n' +
+        'Data: ' + JSON.stringify(data, null, 2);
+
+      // Actually trigger the form submit
+      // form.submit();  // Uncomment to actually submit
+
+      console.log('[Forms Test] JS submit:', data);
+    }
+  </script>
+</body>
+</html>

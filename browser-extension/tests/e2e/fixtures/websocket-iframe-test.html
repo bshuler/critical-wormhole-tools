@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebSocket & Iframe Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1e272e;
+      color: #dfe6e9;
+    }
+    .container {
+      background: #2d3436;
+      padding: 30px;
+      border-radius: 12px;
+    }
+    h1 { color: #74b9ff; margin-top: 0; }
+    h2 { color: #81ecec; margin-top: 30px; }
+    nav { margin: 20px 0; }
+    nav a { color: #74b9ff; margin-right: 15px; }
+    .test-section {
+      background: #636e72;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      background: #0984e3;
+      color: white;
+    }
+    button:hover { background: #0864b3; }
+    button:disabled { background: #636e72; cursor: not-allowed; }
+    .result {
+      margin-top: 10px;
+      padding: 15px;
+      background: #1e272e;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .success { color: #2ecc71; }
+    .error { color: #e74c3c; }
+    .pending { color: #f39c12; }
+    .info { color: #74b9ff; }
+    iframe {
+      width: 100%;
+      height: 200px;
+      border: 2px solid #636e72;
+      border-radius: 8px;
+      background: white;
+    }
+    #ws-status {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      margin-left: 10px;
+    }
+    .ws-connecting { background: #f39c12; color: black; }
+    .ws-open { background: #2ecc71; color: black; }
+    .ws-closed { background: #e74c3c; color: white; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>WebSocket & Iframe Test</h1>
+    <p>This page tests WebSocket connections and nested iframes through the wormhole.</p>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/resource-test">Resource Tests</a>
+      <a href="/javascript-test">JS Tests</a>
+    </nav>
+
+    <!-- WebSocket Test -->
+    <div class="test-section">
+      <h2>1. WebSocket Connection
+        <span id="ws-status" class="ws-closed">Closed</span>
+      </h2>
+      <p>Test WebSocket communication through the wormhole:</p>
+      <div>
+        <button id="ws-connect" onclick="connectWebSocket()">Connect</button>
+        <button id="ws-send" onclick="sendMessage()" disabled>Send Message</button>
+        <button id="ws-close" onclick="closeWebSocket()" disabled>Close</button>
+      </div>
+      <p>Message to send:</p>
+      <input type="text" id="ws-message" value="Hello from wormhole!"
+             style="width: 300px; padding: 8px; border-radius: 4px; border: none;">
+      <div class="result" id="ws-log">WebSocket log will appear here...</div>
+    </div>
+
+    <!-- Iframe Test -->
+    <div class="test-section">
+      <h2>2. Nested Iframe</h2>
+      <p>This iframe loads content through the wormhole:</p>
+      <iframe id="test-iframe" src="/iframe-content"></iframe>
+      <p id="iframe-status" class="pending">Checking iframe...</p>
+    </div>
+
+    <!-- Dynamic Iframe Test -->
+    <div class="test-section">
+      <h2>3. Dynamic Iframe</h2>
+      <p>Create an iframe dynamically:</p>
+      <button onclick="createDynamicIframe()">Create Iframe</button>
+      <div id="dynamic-iframe-container"></div>
+      <p id="dynamic-iframe-status" class="pending">Click button to create iframe</p>
+    </div>
+
+    <!-- Iframe Communication Test -->
+    <div class="test-section">
+      <h2>4. Iframe Communication</h2>
+      <p>Test message passing between parent and iframe:</p>
+      <button onclick="sendToIframe()">Send Message to Iframe</button>
+      <div class="result" id="iframe-comm-result">Communication log will appear here...</div>
+    </div>
+
+    <!-- Run All Tests -->
+    <div class="test-section">
+      <h2>Run All Tests</h2>
+      <button onclick="runAllTests()">Run All Tests</button>
+      <div class="result" id="all-tests-result">Click to run all tests</div>
+    </div>
+  </div>
+
+  <script>
+    console.log('[WS-Iframe Test] Page loaded');
+
+    // WebSocket test
+    let ws = null;
+    const wsLog = document.getElementById('ws-log');
+    const wsStatus = document.getElementById('ws-status');
+
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const className = type;
+      wsLog.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+      wsLog.scrollTop = wsLog.scrollHeight;
+    }
+
+    function updateWsStatus(state) {
+      wsStatus.textContent = state;
+      wsStatus.className = 'ws-' + state.toLowerCase();
+
+      const connectBtn = document.getElementById('ws-connect');
+      const sendBtn = document.getElementById('ws-send');
+      const closeBtn = document.getElementById('ws-close');
+
+      connectBtn.disabled = state === 'Open' || state === 'Connecting';
+      sendBtn.disabled = state !== 'Open';
+      closeBtn.disabled = state !== 'Open';
+    }
+
+    function connectWebSocket() {
+      log('Attempting to connect WebSocket...', 'pending');
+      updateWsStatus('Connecting');
+
+      try {
+        // Create WebSocket - this will be intercepted by sandbox
+        // In a real scenario, this would be the wormhole host's WebSocket endpoint
+        ws = new WebSocket('ws://localhost/echo');
+
+        ws.onopen = function(event) {
+          log('WebSocket connected!', 'success');
+          updateWsStatus('Open');
+        };
+
+        ws.onmessage = function(event) {
+          log('Received: ' + event.data, 'info');
+        };
+
+        ws.onerror = function(event) {
+          log('WebSocket error occurred', 'error');
+        };
+
+        ws.onclose = function(event) {
+          log(`WebSocket closed (code: ${event.code}, reason: ${event.reason || 'none'})`, 'pending');
+          updateWsStatus('Closed');
+          ws = null;
+        };
+      } catch (error) {
+        log('Error creating WebSocket: ' + error.message, 'error');
+        updateWsStatus('Closed');
+      }
+    }
+
+    function sendMessage() {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('WebSocket not connected', 'error');
+        return;
+      }
+
+      const message = document.getElementById('ws-message').value;
+      log('Sending: ' + message, 'info');
+      ws.send(message);
+    }
+
+    function closeWebSocket() {
+      if (ws) {
+        log('Closing WebSocket...', 'pending');
+        ws.close(1000, 'User requested close');
+      }
+    }
+
+    // Iframe tests
+    setTimeout(() => {
+      const iframe = document.getElementById('test-iframe');
+      const status = document.getElementById('iframe-status');
+
+      try {
+        // Check if iframe loaded something
+        if (iframe.contentDocument || iframe.contentWindow) {
+          status.textContent = 'Iframe loaded (check content below)';
+          status.className = 'success';
+        } else {
+          status.textContent = 'Iframe content not accessible';
+          status.className = 'pending';
+        }
+      } catch (e) {
+        status.textContent = 'Iframe loaded (cross-origin)';
+        status.className = 'success';
+      }
+    }, 2000);
+
+    function createDynamicIframe() {
+      const container = document.getElementById('dynamic-iframe-container');
+      const status = document.getElementById('dynamic-iframe-status');
+
+      container.innerHTML = '';
+      status.textContent = 'Creating iframe...';
+      status.className = 'pending';
+
+      const iframe = document.createElement('iframe');
+      iframe.src = '/dynamic-iframe-content';
+      iframe.style.width = '100%';
+      iframe.style.height = '150px';
+      iframe.style.border = '2px solid #2ecc71';
+      iframe.style.borderRadius = '8px';
+      iframe.style.marginTop = '10px';
+
+      iframe.onload = function() {
+        status.textContent = 'Dynamic iframe created and loaded!';
+        status.className = 'success';
+      };
+
+      iframe.onerror = function() {
+        status.textContent = 'Dynamic iframe failed to load';
+        status.className = 'error';
+      };
+
+      container.appendChild(iframe);
+    }
+
+    function sendToIframe() {
+      const result = document.getElementById('iframe-comm-result');
+      const iframe = document.getElementById('test-iframe');
+
+      result.innerHTML = 'Sending message to iframe...\n';
+
+      try {
+        iframe.contentWindow.postMessage({
+          type: 'PARENT_MESSAGE',
+          data: 'Hello from parent!'
+        }, '*');
+        result.innerHTML += 'Message sent to iframe\n';
+      } catch (e) {
+        result.innerHTML += 'Error: ' + e.message + '\n';
+      }
+    }
+
+    // Listen for messages from iframes
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'IFRAME_RESPONSE') {
+        const result = document.getElementById('iframe-comm-result');
+        result.innerHTML += 'Received from iframe: ' + event.data.data + '\n';
+      }
+    });
+
+    // Run all tests
+    function runAllTests() {
+      const result = document.getElementById('all-tests-result');
+      result.innerHTML = 'Running all tests...\n\n';
+
+      const tests = [];
+
+      // WebSocket class exists
+      tests.push('WebSocket class: ' + (typeof WebSocket === 'function' ? 'PASS' : 'FAIL'));
+
+      // Check if our custom WebSocket is being used
+      const testWs = new WebSocket('ws://test');
+      tests.push('WebSocket intercepted: ' + (testWs._id ? 'PASS (proxied)' : 'UNKNOWN'));
+      testWs.close();
+
+      // Iframe exists
+      const iframe = document.getElementById('test-iframe');
+      tests.push('Static iframe present: ' + (iframe ? 'PASS' : 'FAIL'));
+
+      // Check for srcdoc (indicates wormhole-loaded content)
+      tests.push('Iframe using srcdoc: ' + (iframe.srcdoc ? 'PASS' : 'PENDING (may still be loading)'));
+
+      result.innerHTML = tests.join('\n');
+    }
+  </script>
+</body>
+</html>

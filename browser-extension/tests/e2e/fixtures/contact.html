@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Contact Page</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 { color: #333; margin-top: 0; }
+    nav {
+      display: flex;
+      gap: 15px;
+      margin: 20px 0;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+    nav a {
+      color: #11998e;
+      text-decoration: none;
+    }
+    nav a:hover { text-decoration: underline; }
+    .contact-form {
+      margin: 20px 0;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-weight: 600;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 15px;
+      padding: 12px 24px;
+      background: #11998e;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #0d7d71; }
+    .info-card {
+      margin: 20px 0;
+      padding: 15px;
+      background: #e8f5e9;
+      border-radius: 8px;
+      border-left: 4px solid #11998e;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Contact Page</h1>
+    <p>Get in touch through the wormhole!</p>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/javascript-test">JS Tests</a>
+      <a href="/forms-test">Forms</a>
+      <a href="/edge-cases">Edge Cases</a>
+    </nav>
+
+    <div class="info-card">
+      <strong>Note:</strong> This is a test page. Form submissions are handled by the wormhole viewer.
+    </div>
+
+    <div class="contact-form">
+      <h2>Send us a message</h2>
+      <form action="/api/contact" method="POST">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="message">Message:</label>
+        <textarea id="message" name="message" rows="4" required></textarea>
+
+        <button type="submit">Send Message</button>
+      </form>
+    </div>
+
+    <div class="info-card">
+      <h3>JavaScript Status</h3>
+      <p>JS: <span id="js-status">Checking...</span></p>
+      <button onclick="testContactJs()">Test JS</button>
+      <p id="js-result"></p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('js-status').textContent = 'Active!';
+    document.getElementById('js-status').style.color = '#11998e';
+
+    function testContactJs() {
+      document.getElementById('js-result').textContent =
+        'JS executed at ' + new Date().toLocaleTimeString();
+    }
+
+    console.log('[Contact] Page loaded, JS working');
+  </script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>JavaScript Tests</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    .container { background: #16213e; padding: 30px; border-radius: 12px; }
+    h1 { color: #00d9ff; margin-top: 0; }
+    h3 { color: #e94560; }
+    nav { margin: 20px 0; }
+    nav a { color: #00d9ff; margin-right: 15px; }
+    .test-card {
+      background: #0f3460;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    .result {
+      font-family: monospace;
+      padding: 10px;
+      background: #0a0a0a;
+      border-radius: 4px;
+      margin-top: 10px;
+      color: #0f0;
+    }
+    .result.error { color: #e74c3c; }
+    .result.success { color: #2ecc71; }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      background: #e94560;
+      color: white;
+    }
+    button:hover { background: #ff6b6b; }
+    input, select {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #0a0a0a;
+      color: white;
+      margin: 5px;
+    }
+    .timer-display {
+      font-size: 2em;
+      font-family: monospace;
+      color: #00d9ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>JavaScript Test Page</h1>
+    <p>Testing JavaScript execution within wormhole pages.</p>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/forms-test">Forms</a>
+      <a href="/edge-cases">Edge Cases</a>
+    </nav>
+
+    <!-- DOM Manipulation -->
+    <div class="test-card">
+      <h3>1. DOM Manipulation</h3>
+      <button onclick="testDomManipulation()">Run DOM Test</button>
+      <div class="result" id="dom-result">Waiting...</div>
+      <div id="dom-target" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Event Listeners -->
+    <div class="test-card">
+      <h3>2. Event Listeners</h3>
+      <p>Click the box below:</p>
+      <div id="click-box" style="width:200px; height:100px; background:#e94560; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+        Click Me!
+      </div>
+      <div class="result" id="event-result">No clicks yet</div>
+    </div>
+
+    <!-- Timers (setTimeout/setInterval) -->
+    <div class="test-card">
+      <h3>3. Timers (setTimeout/setInterval)</h3>
+      <button onclick="startTimer()">Start Timer</button>
+      <button onclick="stopTimer()">Stop Timer</button>
+      <div class="timer-display" id="timer-display">0</div>
+      <div class="result" id="timer-result">Timer not started</div>
+    </div>
+
+    <!-- Fetch API (will likely fail - testing graceful handling) -->
+    <div class="test-card">
+      <h3>4. Fetch API Test</h3>
+      <p>Testing if fetch works (may be blocked by extension context):</p>
+      <button onclick="testFetch()">Test Fetch</button>
+      <div class="result" id="fetch-result">Not tested</div>
+    </div>
+
+    <!-- LocalStorage -->
+    <div class="test-card">
+      <h3>5. LocalStorage Test</h3>
+      <input type="text" id="storage-input" placeholder="Enter value">
+      <button onclick="saveToStorage()">Save</button>
+      <button onclick="loadFromStorage()">Load</button>
+      <button onclick="clearStorage()">Clear</button>
+      <div class="result" id="storage-result">Storage empty</div>
+    </div>
+
+    <!-- JSON Parsing -->
+    <div class="test-card">
+      <h3>6. JSON Operations</h3>
+      <button onclick="testJson()">Test JSON Parse/Stringify</button>
+      <div class="result" id="json-result">Not tested</div>
+    </div>
+
+    <!-- Promise/Async -->
+    <div class="test-card">
+      <h3>7. Promises & Async/Await</h3>
+      <button onclick="testAsync()">Test Async</button>
+      <div class="result" id="async-result">Not tested</div>
+    </div>
+
+    <!-- Error Handling -->
+    <div class="test-card">
+      <h3>8. Error Handling</h3>
+      <button onclick="testErrorHandling()">Trigger Caught Error</button>
+      <button onclick="testUncaughtError()">Trigger Uncaught Error</button>
+      <div class="result" id="error-result">No errors</div>
+    </div>
+
+    <!-- Console Methods -->
+    <div class="test-card">
+      <h3>9. Console Methods</h3>
+      <button onclick="testConsoleMethods()">Test All Console Methods</button>
+      <div class="result" id="console-result">Check browser console for output</div>
+    </div>
+
+    <!-- Window/Document Properties -->
+    <div class="test-card">
+      <h3>10. Window/Document Properties</h3>
+      <button onclick="testWindowProps()">Check Properties</button>
+      <div class="result" id="window-result">Not checked</div>
+    </div>
+  </div>
+
+  <script>
+    console.log('[JS Test] Page loaded');
+
+    // 1. DOM Manipulation
+    function testDomManipulation() {
+      const target = document.getElementById('dom-target');
+      const result = document.getElementById('dom-result');
+      try {
+        // Create elements
+        const div = document.createElement('div');
+        div.innerHTML = '<strong>Created:</strong> ' + new Date().toISOString();
+        div.style.padding = '10px';
+        div.style.background = '#2ecc71';
+        div.style.borderRadius = '4px';
+        div.style.marginTop = '5px';
+        target.appendChild(div);
+        result.textContent = 'SUCCESS: DOM manipulation works!';
+        result.className = 'result success';
+      } catch (e) {
+        result.textContent = 'ERROR: ' + e.message;
+        result.className = 'result error';
+      }
+    }
+
+    // 2. Event Listeners
+    let clickCount = 0;
+    document.getElementById('click-box').addEventListener('click', function(e) {
+      clickCount++;
+      this.textContent = 'Clicked ' + clickCount + ' times!';
+      document.getElementById('event-result').textContent = 'Event listener works! Click #' + clickCount;
+      document.getElementById('event-result').className = 'result success';
+    });
+
+    // 3. Timers
+    let timerValue = 0;
+    let timerInterval = null;
+
+    function startTimer() {
+      if (timerInterval) return;
+      timerInterval = setInterval(() => {
+        timerValue++;
+        document.getElementById('timer-display').textContent = timerValue;
+      }, 1000);
+      document.getElementById('timer-result').textContent = 'Timer running (setInterval works)';
+      document.getElementById('timer-result').className = 'result success';
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        document.getElementById('timer-result').textContent = 'Timer stopped at ' + timerValue;
+      }
+    }
+
+    // 4. Fetch API
+    async function testFetch() {
+      const result = document.getElementById('fetch-result');
+      try {
+        // Try to fetch something (will likely fail in extension context)
+        const response = await fetch('https://api.github.com/zen');
+        const text = await response.text();
+        result.textContent = 'SUCCESS: ' + text;
+        result.className = 'result success';
+      } catch (e) {
+        result.textContent = 'EXPECTED: Fetch blocked in extension context - ' + e.message;
+        result.className = 'result';
+      }
+    }
+
+    // 5. LocalStorage
+    function saveToStorage() {
+      const value = document.getElementById('storage-input').value;
+      try {
+        localStorage.setItem('wh-test', value);
+        document.getElementById('storage-result').textContent = 'Saved: ' + value;
+        document.getElementById('storage-result').className = 'result success';
+      } catch (e) {
+        document.getElementById('storage-result').textContent = 'ERROR: ' + e.message;
+        document.getElementById('storage-result').className = 'result error';
+      }
+    }
+
+    function loadFromStorage() {
+      try {
+        const value = localStorage.getItem('wh-test');
+        document.getElementById('storage-result').textContent = 'Loaded: ' + (value || '(empty)');
+        document.getElementById('storage-result').className = 'result success';
+      } catch (e) {
+        document.getElementById('storage-result').textContent = 'ERROR: ' + e.message;
+        document.getElementById('storage-result').className = 'result error';
+      }
+    }
+
+    function clearStorage() {
+      try {
+        localStorage.removeItem('wh-test');
+        document.getElementById('storage-result').textContent = 'Storage cleared';
+        document.getElementById('storage-result').className = 'result';
+      } catch (e) {
+        document.getElementById('storage-result').textContent = 'ERROR: ' + e.message;
+        document.getElementById('storage-result').className = 'result error';
+      }
+    }
+
+    // 6. JSON
+    function testJson() {
+      const result = document.getElementById('json-result');
+      try {
+        const obj = { name: 'test', values: [1, 2, 3], nested: { a: 'b' } };
+        const json = JSON.stringify(obj);
+        const parsed = JSON.parse(json);
+        result.textContent = 'SUCCESS: ' + json + ' -> parsed.name = ' + parsed.name;
+        result.className = 'result success';
+      } catch (e) {
+        result.textContent = 'ERROR: ' + e.message;
+        result.className = 'result error';
+      }
+    }
+
+    // 7. Async/Await
+    async function testAsync() {
+      const result = document.getElementById('async-result');
+      result.textContent = 'Running async test...';
+
+      try {
+        const value = await new Promise((resolve) => {
+          setTimeout(() => resolve('Promise resolved!'), 1000);
+        });
+        result.textContent = 'SUCCESS: ' + value;
+        result.className = 'result success';
+      } catch (e) {
+        result.textContent = 'ERROR: ' + e.message;
+        result.className = 'result error';
+      }
+    }
+
+    // 8. Error Handling
+    function testErrorHandling() {
+      const result = document.getElementById('error-result');
+      try {
+        throw new Error('Intentional test error');
+      } catch (e) {
+        result.textContent = 'SUCCESS: Caught error - ' + e.message;
+        result.className = 'result success';
+      }
+    }
+
+    function testUncaughtError() {
+      const result = document.getElementById('error-result');
+      result.textContent = 'Throwing uncaught error (check console)...';
+      // This will throw but won't crash the page
+      setTimeout(() => {
+        throw new Error('Uncaught test error');
+      }, 100);
+    }
+
+    // 9. Console Methods
+    function testConsoleMethods() {
+      console.log('console.log test');
+      console.info('console.info test');
+      console.warn('console.warn test');
+      console.error('console.error test');
+      console.debug('console.debug test');
+      console.table([{a: 1, b: 2}, {a: 3, b: 4}]);
+      console.group('Group test');
+      console.log('Inside group');
+      console.groupEnd();
+      console.time('timer');
+      console.timeEnd('timer');
+      document.getElementById('console-result').textContent = 'All console methods called - check DevTools';
+      document.getElementById('console-result').className = 'result success';
+    }
+
+    // 10. Window/Document Properties
+    function testWindowProps() {
+      const result = document.getElementById('window-result');
+      const props = {
+        'window.location.href': window.location.href,
+        'document.title': document.title,
+        'navigator.userAgent': navigator.userAgent.substring(0, 50) + '...',
+        'screen.width': screen.width,
+        'window.innerWidth': window.innerWidth,
+        'document.cookie access': typeof document.cookie
+      };
+      result.innerHTML = Object.entries(props)
+        .map(([k, v]) => `<div>${k}: ${v}</div>`)
+        .join('');
+      result.className = 'result success';
+    }
+
+    // Global error handler
+    window.onerror = function(msg, url, line) {
+      console.log('[JS Test] Global error caught:', msg);
+      return false; // Let it propagate
+    };
+  </script>
+</body>
+</html>

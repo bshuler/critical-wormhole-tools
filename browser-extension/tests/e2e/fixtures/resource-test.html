@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Resource Loading Test</title>
+  <link rel="stylesheet" href="/styles/main.css">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1e272e;
+      color: #dfe6e9;
+    }
+    .container {
+      background: #2d3436;
+      padding: 30px;
+      border-radius: 12px;
+    }
+    h1 { color: #74b9ff; margin-top: 0; }
+    h2 { color: #81ecec; margin-top: 30px; }
+    nav { margin: 20px 0; }
+    nav a { color: #74b9ff; margin-right: 15px; }
+    .test-section {
+      background: #636e72;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      background: #0984e3;
+      color: white;
+    }
+    button:hover { background: #0864b3; }
+    .result {
+      margin-top: 10px;
+      padding: 15px;
+      background: #1e272e;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      overflow-x: auto;
+    }
+    .success { color: #2ecc71; }
+    .error { color: #e74c3c; }
+    .pending { color: #f39c12; }
+    img {
+      max-width: 200px;
+      border-radius: 8px;
+      margin: 10px;
+    }
+    .image-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Resource Loading Test</h1>
+    <p>This page tests loading external resources through the wormhole.</p>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/javascript-test">JS Tests</a>
+    </nav>
+
+    <!-- External CSS Test -->
+    <div class="test-section">
+      <h2>1. External CSS</h2>
+      <p>The box below should have a gradient background if external CSS loaded:</p>
+      <div class="external-css-test">
+        <span class="external-css-loaded">External CSS Test</span>
+      </div>
+      <p id="css-status" class="pending">Checking CSS...</p>
+    </div>
+
+    <!-- External Script Test -->
+    <div class="test-section">
+      <h2>2. External Script</h2>
+      <p>External script status: <span id="external-script-indicator" class="pending">Loading...</span></p>
+      <p>This page loads <code>/scripts/app.js</code> which sets up test functions.</p>
+    </div>
+
+    <!-- Fetch API Test -->
+    <div class="test-section">
+      <h2>3. Fetch API</h2>
+      <p>Test fetching JSON data through the wormhole:</p>
+      <button onclick="testFetchApi()">Test Fetch</button>
+      <div class="result" id="fetch-result">Click button to test fetch</div>
+    </div>
+
+    <!-- XHR Test -->
+    <div class="test-section">
+      <h2>4. XMLHttpRequest</h2>
+      <p>Test XHR requests through the wormhole:</p>
+      <button onclick="testXHR()">Test XHR</button>
+      <div class="result" id="xhr-result">Click button to test XHR</div>
+    </div>
+
+    <!-- LocalStorage Test -->
+    <div class="test-section">
+      <h2>5. localStorage</h2>
+      <p>Test per-site localStorage:</p>
+      <button onclick="testLocalStorage()">Test localStorage</button>
+      <div class="result" id="storage-result">Click button to test localStorage</div>
+    </div>
+
+    <!-- SessionStorage Test -->
+    <div class="test-section">
+      <h2>6. sessionStorage</h2>
+      <p>Test per-site sessionStorage:</p>
+      <button onclick="testSessionStorage()">Test sessionStorage</button>
+      <div class="result" id="session-storage-result">Click button to test sessionStorage</div>
+    </div>
+
+    <!-- Cookies Test -->
+    <div class="test-section">
+      <h2>7. Cookies</h2>
+      <p>Test document.cookie:</p>
+      <button onclick="testCookies()">Test Cookies</button>
+      <div class="result" id="cookie-result">Click button to test cookies</div>
+    </div>
+
+    <!-- Location Test -->
+    <div class="test-section">
+      <h2>8. window.location</h2>
+      <p>Test window.location properties:</p>
+      <button onclick="testLocation()">Test Location</button>
+      <div class="result" id="location-result">Click button to test location</div>
+    </div>
+
+    <!-- Image Loading Test -->
+    <div class="test-section">
+      <h2>9. Image Loading</h2>
+      <p>Images should load through the wormhole:</p>
+      <div class="image-grid">
+        <div>
+          <img src="/images/test-image.svg" alt="Test SVG">
+          <p>SVG Image</p>
+        </div>
+      </div>
+      <p id="image-status" class="pending">Checking images...</p>
+    </div>
+
+    <!-- Run All Tests -->
+    <div class="test-section">
+      <h2>Run All Tests</h2>
+      <button onclick="runAllTests()">Run All Tests</button>
+      <div class="result" id="all-tests-result">Click to run all tests</div>
+    </div>
+  </div>
+
+  <!-- External script -->
+  <script src="/scripts/app.js"></script>
+
+  <!-- Inline script for additional tests -->
+  <script>
+    console.log('[Resource Test] Page loaded');
+
+    // Check if external CSS loaded
+    setTimeout(() => {
+      const cssTest = document.querySelector('.external-css-test');
+      const status = document.getElementById('css-status');
+      if (cssTest) {
+        const style = getComputedStyle(cssTest);
+        // Check if the gradient background is applied
+        if (style.backgroundImage.includes('gradient')) {
+          status.textContent = 'External CSS loaded successfully!';
+          status.className = 'success';
+        } else {
+          status.textContent = 'External CSS may not have loaded (no gradient)';
+          status.className = 'error';
+        }
+      }
+    }, 1000);
+
+    // Check external script
+    setTimeout(() => {
+      if (window.externalScriptLoaded) {
+        console.log('[Resource Test] External script confirmed loaded');
+      } else {
+        const indicator = document.getElementById('external-script-indicator');
+        if (indicator) {
+          indicator.textContent = 'External script NOT loaded';
+          indicator.className = 'error';
+        }
+      }
+    }, 2000);
+
+    // Check images
+    setTimeout(() => {
+      const images = document.querySelectorAll('img');
+      const status = document.getElementById('image-status');
+      let loadedCount = 0;
+      let errorCount = 0;
+
+      images.forEach(img => {
+        if (img.complete && img.naturalWidth > 0) {
+          loadedCount++;
+        } else {
+          errorCount++;
+        }
+      });
+
+      if (errorCount === 0 && loadedCount > 0) {
+        status.textContent = `All ${loadedCount} images loaded!`;
+        status.className = 'success';
+      } else if (loadedCount > 0) {
+        status.textContent = `${loadedCount} loaded, ${errorCount} failed`;
+        status.className = 'pending';
+      } else {
+        status.textContent = 'No images loaded yet';
+        status.className = 'error';
+      }
+    }, 3000);
+
+    // Run all tests
+    function runAllTests() {
+      const result = document.getElementById('all-tests-result');
+      result.textContent = 'Running all tests...\n\n';
+
+      const tests = [];
+
+      // External script test
+      tests.push('External Script: ' + (window.externalScriptLoaded ? 'PASS' : 'FAIL'));
+
+      // Run individual tests
+      if (typeof testFetchApi === 'function') {
+        testFetchApi();
+        tests.push('Fetch API: Triggered');
+      }
+      if (typeof testXHR === 'function') {
+        testXHR();
+        tests.push('XHR: Triggered');
+      }
+      if (typeof testLocalStorage === 'function') {
+        testLocalStorage();
+        tests.push('localStorage: Triggered');
+      }
+      if (typeof testSessionStorage === 'function') {
+        testSessionStorage();
+        tests.push('sessionStorage: Triggered');
+      }
+      if (typeof testCookies === 'function') {
+        testCookies();
+        tests.push('Cookies: Triggered');
+      }
+      if (typeof testLocation === 'function') {
+        testLocation();
+        tests.push('Location: Triggered');
+      }
+
+      result.textContent = tests.join('\n');
+    }
+  </script>
+</body>
+</html>

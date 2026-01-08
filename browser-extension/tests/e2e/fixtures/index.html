@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Home</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 { color: #333; margin-top: 0; }
+    nav {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+      padding: 15px;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+    nav a {
+      color: #667eea;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    nav a:hover {
+      background: #667eea;
+      color: white;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .test-section h3 {
+      margin-top: 0;
+      color: #764ba2;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s;
+    }
+    button:active { transform: scale(0.95); }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-secondary { background: #764ba2; color: white; }
+    .btn-danger { background: #e74c3c; color: white; }
+    #js-output {
+      padding: 10px;
+      background: #1a1a2e;
+      color: #0f0;
+      font-family: monospace;
+      border-radius: 4px;
+      min-height: 60px;
+      margin-top: 10px;
+    }
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .status-green { background: #2ecc71; }
+    .status-red { background: #e74c3c; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Home Page</h1>
+    <p>Comprehensive test page for wormhole browser extension.</p>
+
+    <nav>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+      <a href="/javascript-test">JS Tests</a>
+      <a href="/forms-test">Forms</a>
+      <a href="/edge-cases">Edge Cases</a>
+      <a href="https://example.com" target="_blank">External</a>
+    </nav>
+
+    <!-- JavaScript Interaction Tests -->
+    <div class="test-section">
+      <h3>JavaScript Buttons (Should Work)</h3>
+      <p>These buttons use onclick handlers - they should execute JS without navigating.</p>
+      <button class="btn-primary" onclick="testClick()">Click Counter</button>
+      <button class="btn-secondary" onclick="showAlert()">Show Alert</button>
+      <button class="btn-danger" onclick="toggleElement()">Toggle Hidden</button>
+      <button class="btn-primary" onclick="addDynamicContent()">Add Dynamic Content</button>
+      <div id="js-output">Click count: 0</div>
+      <div id="hidden-element" class="hidden" style="margin-top:10px; padding:10px; background:#2ecc71; color:white; border-radius:4px;">
+        Hidden element revealed!
+      </div>
+      <div id="dynamic-container"></div>
+    </div>
+
+    <!-- Tricky Link Tests -->
+    <div class="test-section">
+      <h3>Tricky Links (Edge Cases)</h3>
+      <p>Various link types to test the click interceptor:</p>
+      <ul>
+        <li><a href="#section1">Hash link (#section1)</a> - should scroll, not navigate</li>
+        <li><a href="javascript:void(0)" onclick="alert('JS link clicked!')">javascript: link</a> - should execute JS</li>
+        <li><a href="mailto:test@example.com">mailto: link</a> - should open email client</li>
+        <li><a href="tel:+1234567890">tel: link</a> - should open phone</li>
+        <li><a href="/about?query=test&foo=bar">Link with query params</a></li>
+        <li><a href="/about#section2">Link with path AND hash</a></li>
+        <li><a href="./relative-path">Relative path (./)</a></li>
+        <li><a href="../parent-path">Parent path (../)</a></li>
+      </ul>
+    </div>
+
+    <!-- Button That Looks Like a Link -->
+    <div class="test-section">
+      <h3>Buttons vs Links (Potential Confusion)</h3>
+      <p>These look similar but behave differently:</p>
+      <a href="/about" style="display:inline-block; padding:10px 20px; background:#667eea; color:white; text-decoration:none; border-radius:4px;">Link styled as button</a>
+      <button onclick="window.location.href='/about'" style="margin-left:10px;">Button that navigates</button>
+      <button onclick="fakeNavigate()" style="margin-left:10px;">Button with fake navigate</button>
+    </div>
+
+    <!-- Dynamic Link Creation -->
+    <div class="test-section">
+      <h3>Dynamic Link Test</h3>
+      <button class="btn-primary" onclick="createDynamicLink()">Create Dynamic Link</button>
+      <div id="dynamic-link-container" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Status Section -->
+    <div class="test-section" id="section1">
+      <h3>Status Check</h3>
+      <p><span class="status-indicator status-green"></span>CSS is working</p>
+      <p><span class="status-indicator" id="js-status"></span>JavaScript: <span id="js-status-text">Checking...</span></p>
+    </div>
+  </div>
+
+  <script>
+    // Initialize
+    let clickCount = 0;
+
+    // Update JS status indicator
+    document.getElementById('js-status').classList.add('status-green');
+    document.getElementById('js-status-text').textContent = 'Working!';
+
+    function testClick() {
+      clickCount++;
+      document.getElementById('js-output').textContent = 'Click count: ' + clickCount;
+      console.log('[Test] Button clicked, count:', clickCount);
+    }
+
+    function showAlert() {
+      alert('Alert from wormhole page! JavaScript is working.');
+    }
+
+    function toggleElement() {
+      const el = document.getElementById('hidden-element');
+      el.classList.toggle('hidden');
+    }
+
+    function addDynamicContent() {
+      const container = document.getElementById('dynamic-container');
+      const div = document.createElement('div');
+      div.style.cssText = 'margin-top:10px; padding:10px; background:#3498db; color:white; border-radius:4px;';
+      div.textContent = 'Dynamic content added at ' + new Date().toLocaleTimeString();
+      container.appendChild(div);
+    }
+
+    function createDynamicLink() {
+      const container = document.getElementById('dynamic-link-container');
+      const link = document.createElement('a');
+      link.href = '/about';
+      link.textContent = 'Dynamically created link to About';
+      link.style.cssText = 'display:inline-block; padding:8px 16px; background:#9b59b6; color:white; text-decoration:none; border-radius:4px;';
+      container.innerHTML = '';
+      container.appendChild(link);
+      console.log('[Test] Dynamic link created');
+    }
+
+    function fakeNavigate() {
+      document.getElementById('js-output').textContent = 'Fake navigate clicked! Did NOT actually navigate.';
+    }
+
+    // Log page load
+    console.log('[Test] Home page JavaScript loaded successfully');
+    console.log('[Test] All interactive elements should work');
+  </script>
+</body>
+</html>

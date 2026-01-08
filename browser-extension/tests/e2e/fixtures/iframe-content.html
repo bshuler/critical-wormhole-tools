@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Iframe Content</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      margin: 0;
+    }
+    h2 { margin-top: 0; }
+    .status {
+      background: rgba(255,255,255,0.2);
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Iframe Content Loaded!</h2>
+  <p>This content was loaded through the wormhole via iframe.</p>
+  <div class="status" id="status">
+    <strong>Status:</strong> Loaded successfully
+  </div>
+
+  <script>
+    console.log('[Iframe] Content loaded');
+
+    // Listen for messages from parent
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'PARENT_MESSAGE') {
+        console.log('[Iframe] Received message from parent:', event.data.data);
+        document.getElementById('status').innerHTML =
+          '<strong>Received from parent:</strong> ' + event.data.data;
+
+        // Send response back
+        window.parent.postMessage({
+          type: 'IFRAME_RESPONSE',
+          data: 'Hello back from iframe!'
+        }, '*');
+      }
+    });
+
+    // Notify parent that we loaded
+    window.parent.postMessage({
+      type: 'IFRAME_LOADED',
+      path: window.location.pathname
+    }, '*');
+  </script>
+</body>
+</html>

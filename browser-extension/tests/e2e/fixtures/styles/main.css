@@ -1,0 +1,41 @@
+/* External CSS file for testing */
+
+.external-css-test {
+  background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+  padding: 20px;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.external-css-loaded::after {
+  content: ' - CSS loaded from external file!';
+  color: #2ecc71;
+}
+
+.fetch-result {
+  background: #2d3436;
+  color: #dfe6e9;
+  padding: 15px;
+  border-radius: 8px;
+  font-family: monospace;
+  white-space: pre-wrap;
+  margin: 10px 0;
+}
+
+.storage-display {
+  background: #636e72;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.cookie-display {
+  background: #0984e3;
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+}

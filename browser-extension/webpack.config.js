@@ -40,7 +40,11 @@ export default {
         { from: 'src/popup/popup.css', to: 'popup.css' },
         { from: 'src/settings/settings.html', to: 'settings.html' },
         { from: 'src/settings/settings.css', to: 'settings.css' },
-        { from: 'icons', to: 'icons', noErrorOnMissing: true }
+        { from: 'icons', to: 'icons', noErrorOnMissing: true },
+        { from: 'src/content', to: 'content', noErrorOnMissing: true },
+        { from: 'src/viewer/viewer.html', to: 'viewer.html' },
+        { from: 'src/viewer/viewer.js', to: 'viewer.js' },
+        { from: 'src/sandbox/sandbox.html', to: 'sandbox.html' }
       ]
     })
   ],
@@ -51,10 +55,8 @@ export default {
     }
   },
   optimization: {
-    splitChunks: {
-      chunks: 'all',
-      name: 'vendor'
-    }
+    // Don't split chunks for extension - service worker needs all code in one file
+    splitChunks: false
   },
   devtool: 'source-map'
 };

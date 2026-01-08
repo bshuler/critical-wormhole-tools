@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edge Cases</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #2d3436;
+      color: #dfe6e9;
+    }
+    .container { background: #636e72; padding: 30px; border-radius: 12px; }
+    h1 { color: #fd79a8; margin-top: 0; }
+    h3 { color: #74b9ff; }
+    nav { margin: 20px 0; }
+    nav a { color: #74b9ff; margin-right: 15px; }
+    .test-section {
+      background: #2d3436;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border: 1px solid #636e72;
+    }
+    .warning { color: #fdcb6e; }
+    .success { color: #00b894; }
+    .error { color: #d63031; }
+    code {
+      background: #1e272e;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background: #1e272e;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      background: #74b9ff;
+      color: #2d3436;
+    }
+    .link-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 10px;
+    }
+    .link-card {
+      background: #1e272e;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .link-card a {
+      color: #81ecec;
+      display: block;
+      margin-bottom: 5px;
+    }
+    .link-card small {
+      color: #b2bec3;
+    }
+    /* Nested link test */
+    .nested-container {
+      padding: 20px;
+      background: #fd79a8;
+      border-radius: 8px;
+    }
+    .nested-inner {
+      padding: 10px;
+      background: #e84393;
+      border-radius: 4px;
+    }
+    /* Positioned elements */
+    .positioned-container {
+      position: relative;
+      height: 150px;
+      background: #0984e3;
+      border-radius: 8px;
+    }
+    .positioned-link {
+      position: absolute;
+      padding: 10px;
+      background: #00cec9;
+      border-radius: 4px;
+      color: white;
+      text-decoration: none;
+    }
+    .pos-1 { top: 10px; left: 10px; }
+    .pos-2 { top: 10px; right: 10px; }
+    .pos-3 { bottom: 10px; left: 50%; transform: translateX(-50%); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Edge Cases Test Page</h1>
+    <p>Testing tricky scenarios that might break the link interception.</p>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/about">About</a>
+      <a href="/javascript-test">JS Tests</a>
+      <a href="/forms-test">Forms</a>
+    </nav>
+
+    <!-- Various Link Types -->
+    <div class="test-section">
+      <h3>1. Various Link Types</h3>
+      <div class="link-grid">
+        <div class="link-card">
+          <a href="/about">Normal internal link</a>
+          <small>Should be intercepted, navigate via wormhole</small>
+        </div>
+        <div class="link-card">
+          <a href="/about?foo=bar&baz=qux">With query params</a>
+          <small>Query params should be preserved</small>
+        </div>
+        <div class="link-card">
+          <a href="/about#section">With hash</a>
+          <small>Hash should be handled</small>
+        </div>
+        <div class="link-card">
+          <a href="#local-section">Local hash only</a>
+          <small>Should scroll, not navigate</small>
+        </div>
+        <div class="link-card">
+          <a href="javascript:void(0)" onclick="alert('clicked!')">javascript: void</a>
+          <small>Should execute JS, not navigate</small>
+        </div>
+        <div class="link-card">
+          <a href="javascript:alert('inline!')">javascript: alert</a>
+          <small>Should show alert</small>
+        </div>
+        <div class="link-card">
+          <a href="mailto:test@example.com">mailto: link</a>
+          <small>Should open email client</small>
+        </div>
+        <div class="link-card">
+          <a href="tel:+1234567890">tel: link</a>
+          <small>Should offer to call</small>
+        </div>
+        <div class="link-card">
+          <a href="https://example.com">External https</a>
+          <small>Should open in new tab</small>
+        </div>
+        <div class="link-card">
+          <a href="http://example.com">External http</a>
+          <small>Should open in new tab</small>
+        </div>
+        <div class="link-card">
+          <a href="//example.com/path">Protocol-relative</a>
+          <small>Tricky! Might break things</small>
+        </div>
+        <div class="link-card">
+          <a href="">Empty href</a>
+          <small>Should reload current page?</small>
+        </div>
+        <div class="link-card">
+          <a>No href attribute</a>
+          <small>Not really a link</small>
+        </div>
+        <div class="link-card">
+          <a href="./relative">Relative ./path</a>
+          <small>Should resolve correctly</small>
+        </div>
+        <div class="link-card">
+          <a href="../parent">Parent ../path</a>
+          <small>Should go up one level</small>
+        </div>
+        <div class="link-card">
+          <a href="subdir/page">No leading slash</a>
+          <small>Relative to current dir</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nested Elements in Links -->
+    <div class="test-section">
+      <h3>2. Nested Elements in Links</h3>
+      <p>Clicking nested elements should still trigger the parent link:</p>
+
+      <a href="/about" style="display:block; text-decoration:none; color:inherit;">
+        <div class="nested-container">
+          <div class="nested-inner">
+            <strong>Click me!</strong>
+            <p style="margin:5px 0 0;">This entire block is a link</p>
+            <button type="button" onclick="event.stopPropagation(); alert('Button clicked, not link!')">
+              Button inside (stops propagation)
+            </button>
+          </div>
+        </div>
+      </a>
+
+      <div class="result" id="nested-result">Click the nested elements above</div>
+    </div>
+
+    <!-- Links with Target Attribute -->
+    <div class="test-section">
+      <h3>3. Target Attribute</h3>
+      <ul>
+        <li><a href="/about" target="_self">target="_self" (same window)</a></li>
+        <li><a href="/about" target="_blank">target="_blank" (new tab)</a></li>
+        <li><a href="/about" target="_parent">target="_parent" (parent frame)</a></li>
+        <li><a href="/about" target="_top">target="_top" (top frame)</a></li>
+        <li><a href="/about" target="custom-frame">target="custom-frame" (named)</a></li>
+      </ul>
+    </div>
+
+    <!-- Positioned Links -->
+    <div class="test-section">
+      <h3>4. Positioned Links</h3>
+      <p>Absolute positioned links should work:</p>
+      <div class="positioned-container">
+        <a href="/about" class="positioned-link pos-1">Top Left</a>
+        <a href="/contact" class="positioned-link pos-2">Top Right</a>
+        <a href="/" class="positioned-link pos-3">Center Bottom</a>
+      </div>
+    </div>
+
+    <!-- Dynamic Link Modification -->
+    <div class="test-section">
+      <h3>5. Dynamic Link Modification</h3>
+      <p>Links can be modified after page load:</p>
+      <a href="/about" id="modifiable-link">Original: /about</a>
+      <br><br>
+      <button onclick="modifyLink('/contact')">Change to /contact</button>
+      <button onclick="modifyLink('/javascript-test')">Change to /javascript-test</button>
+      <button onclick="modifyLink('https://evil.com')">Change to external (evil.com)</button>
+      <div class="result" id="modify-result">Link not modified</div>
+    </div>
+
+    <!-- Event Propagation -->
+    <div class="test-section">
+      <h3>6. Event Propagation Tests</h3>
+      <div onclick="parentClicked()" style="padding:20px; background:#6c5ce7; border-radius:8px;">
+        <p style="color:white; margin:0 0 10px;">Parent div (has onclick)</p>
+        <a href="/about" onclick="linkClicked(event)">Link with onclick</a>
+        <div class="result" id="propagation-result">Click the link to test</div>
+      </div>
+    </div>
+
+    <!-- Rapid Clicks -->
+    <div class="test-section">
+      <h3>7. Rapid Click Test</h3>
+      <p>Click rapidly - should not cause issues:</p>
+      <a href="/about" id="rapid-link" onclick="rapidClick()">Click me rapidly!</a>
+      <div class="result" id="rapid-result">Clicks: 0</div>
+    </div>
+
+    <!-- Links Created via innerHTML -->
+    <div class="test-section">
+      <h3>8. innerHTML Created Links</h3>
+      <button onclick="createInnerHtmlLinks()">Create Links via innerHTML</button>
+      <div id="innerhtml-container" style="margin-top:10px;"></div>
+      <div class="result" id="innerhtml-result">Links not created yet</div>
+    </div>
+
+    <!-- SVG Links -->
+    <div class="test-section">
+      <h3>9. SVG with Links</h3>
+      <svg width="300" height="100" style="background:#1e272e; border-radius:8px;">
+        <a href="/about">
+          <rect x="10" y="10" width="80" height="80" fill="#00b894" rx="8"/>
+          <text x="50" y="55" fill="white" text-anchor="middle" font-size="12">About</text>
+        </a>
+        <a href="/contact">
+          <rect x="110" y="10" width="80" height="80" fill="#0984e3" rx="8"/>
+          <text x="150" y="55" fill="white" text-anchor="middle" font-size="12">Contact</text>
+        </a>
+        <a href="https://example.com">
+          <rect x="210" y="10" width="80" height="80" fill="#d63031" rx="8"/>
+          <text x="250" y="55" fill="white" text-anchor="middle" font-size="12">External</text>
+        </a>
+      </svg>
+    </div>
+
+    <!-- Data Attributes -->
+    <div class="test-section" id="local-section">
+      <h3>10. Data Attributes on Links</h3>
+      <p>Links with custom data attributes:</p>
+      <a href="/about" data-custom="value1" data-track="click">Link with data attributes</a>
+      <button onclick="checkDataAttributes()">Check Data Attributes</button>
+      <div class="result" id="data-result">Not checked</div>
+    </div>
+
+    <!-- Download Links -->
+    <div class="test-section">
+      <h3>11. Download Attribute</h3>
+      <a href="/about" download="about.html">Download link (won't actually download)</a>
+    </div>
+
+    <!-- Rel Attributes -->
+    <div class="test-section">
+      <h3>12. Rel Attributes</h3>
+      <ul>
+        <li><a href="/about" rel="noopener">rel="noopener"</a></li>
+        <li><a href="/about" rel="noreferrer">rel="noreferrer"</a></li>
+        <li><a href="/about" rel="nofollow">rel="nofollow"</a></li>
+        <li><a href="/about" rel="noopener noreferrer">rel="noopener noreferrer"</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    console.log('[Edge Cases] Page loaded');
+
+    let rapidClicks = 0;
+
+    function modifyLink(newHref) {
+      const link = document.getElementById('modifiable-link');
+      link.href = newHref;
+      link.textContent = 'Modified: ' + newHref;
+      document.getElementById('modify-result').textContent = 'Link href changed to: ' + newHref;
+    }
+
+    function linkClicked(event) {
+      console.log('[Edge Cases] Link onclick fired');
+      document.getElementById('propagation-result').textContent = 'Link onclick fired! Event will propagate...';
+      // Don't prevent default - let the viewer handle it
+    }
+
+    function parentClicked() {
+      console.log('[Edge Cases] Parent onclick fired');
+      document.getElementById('propagation-result').textContent += '\nParent onclick also fired!';
+    }
+
+    function rapidClick() {
+      rapidClicks++;
+      document.getElementById('rapid-result').textContent = 'Clicks: ' + rapidClicks;
+    }
+
+    function createInnerHtmlLinks() {
+      const container = document.getElementById('innerhtml-container');
+      container.innerHTML = `
+        <a href="/about" style="display:inline-block; margin:5px; padding:10px; background:#00b894; color:white; text-decoration:none; border-radius:4px;">innerHTML Link 1</a>
+        <a href="/contact" style="display:inline-block; margin:5px; padding:10px; background:#0984e3; color:white; text-decoration:none; border-radius:4px;">innerHTML Link 2</a>
+        <a href="/javascript-test" style="display:inline-block; margin:5px; padding:10px; background:#6c5ce7; color:white; text-decoration:none; border-radius:4px;">innerHTML Link 3</a>
+      `;
+      document.getElementById('innerhtml-result').textContent = 'Links created! These were NOT rewritten by extractBody() - will they work?';
+      console.log('[Edge Cases] innerHTML links created');
+    }
+
+    function checkDataAttributes() {
+      const link = document.querySelector('a[data-custom]');
+      const result = document.getElementById('data-result');
+      if (link) {
+        result.textContent = 'Found link with:\n' +
+          'data-custom: ' + link.dataset.custom + '\n' +
+          'data-track: ' + link.dataset.track + '\n' +
+          'href: ' + link.href + '\n' +
+          'data-wh-href: ' + (link.dataset.whHref || 'NOT SET');
+      }
+    }
+
+    // Log all link clicks for debugging
+    document.addEventListener('click', function(e) {
+      if (e.target.tagName === 'A' || e.target.closest('a')) {
+        const link = e.target.tagName === 'A' ? e.target : e.target.closest('a');
+        console.log('[Edge Cases] Link clicked:', {
+          href: link.getAttribute('href'),
+          'data-wh-href': link.getAttribute('data-wh-href'),
+          target: link.target,
+          defaultPrevented: e.defaultPrevented
+        });
+      }
+    }, true);
+  </script>
+</body>
+</html>

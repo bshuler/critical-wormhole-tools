@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#grad)" rx="20"/>
+  <circle cx="100" cy="80" r="40" fill="white" opacity="0.9"/>
+  <circle cx="100" cy="80" r="20" fill="#667eea"/>
+  <text x="100" y="150" font-family="Arial, sans-serif" font-size="16" fill="white" text-anchor="middle">
+    Wormhole Test
+  </text>
+  <text x="100" y="170" font-family="Arial, sans-serif" font-size="12" fill="white" text-anchor="middle" opacity="0.8">
+    Image loaded!
+  </text>
+</svg>
