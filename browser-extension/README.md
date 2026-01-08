@@ -369,7 +369,7 @@ The extension runs wormhole pages in a sandboxed iframe with extensive API proxy
 | **Notifications** | Works, prefixes title with wormhole address |
 | **Clipboard API** | Proxied, permission shows extension origin |
 | **getUserMedia** | Camera/microphone proxied, permission shows extension origin |
-| **WebRTC** | Signaling can be proxied; media streams need TURN server |
+| **WebRTC** | Full support with public STUN servers (Google, etc.); works for P2P in most networks |
 
 ### Not Supported
 

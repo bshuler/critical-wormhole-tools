@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebRTC Test</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #0d1117;
+      color: #c9d1d9;
+    }
+    .container { background: #161b22; padding: 30px; border-radius: 12px; }
+    h1 { color: #58a6ff; margin-top: 0; }
+    h2 { color: #79c0ff; margin-top: 30px; }
+    .test-section {
+      background: #21262d;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 15px 0;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      background: #238636;
+      color: white;
+      font-size: 14px;
+    }
+    button:hover { background: #2ea043; }
+    button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+    .result {
+      margin-top: 10px;
+      padding: 15px;
+      background: #0d1117;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+    .success { color: #3fb950; }
+    .error { color: #f85149; }
+    .pending { color: #d29922; }
+    .info { color: #58a6ff; }
+    video {
+      width: 100%;
+      max-width: 400px;
+      background: #000;
+      border-radius: 8px;
+    }
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 15px;
+    }
+    .video-container {
+      text-align: center;
+    }
+    .video-container p {
+      margin-top: 8px;
+      color: #8b949e;
+    }
+    nav { margin: 20px 0; }
+    nav a { color: #58a6ff; margin-right: 15px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>WebRTC Test</h1>
+    <p>This page tests WebRTC functionality with public STUN servers.</p>
+
+    <nav>
+      <a href="/">Home</a>
+      <a href="/advanced-features-test">Advanced Features</a>
+    </nav>
+
+    <!-- ICE Servers Test -->
+    <div class="test-section">
+      <h2>1. STUN Server Connectivity</h2>
+      <p>Test connectivity to public STUN servers:</p>
+      <button onclick="testStunServers()">Test STUN Servers</button>
+      <div class="result" id="stun-result">Click button to test STUN connectivity...</div>
+    </div>
+
+    <!-- RTCPeerConnection Test -->
+    <div class="test-section">
+      <h2>2. RTCPeerConnection</h2>
+      <p>Create a peer connection and gather ICE candidates:</p>
+      <button onclick="testPeerConnection()">Test Peer Connection</button>
+      <div class="result" id="peer-result">Click button to test RTCPeerConnection...</div>
+    </div>
+
+    <!-- Local Loopback Test -->
+    <div class="test-section">
+      <h2>3. Data Channel Loopback</h2>
+      <p>Test sending data through a local peer connection:</p>
+      <button onclick="testDataChannel()">Test Data Channel</button>
+      <div class="result" id="data-result">Click button to test data channel...</div>
+    </div>
+
+    <!-- Media Stream Test -->
+    <div class="test-section">
+      <h2>4. getUserMedia (Camera/Mic)</h2>
+      <p>Request camera and microphone access:</p>
+      <button onclick="testGetUserMedia()">Request Camera</button>
+      <button onclick="stopMedia()">Stop Camera</button>
+      <div class="video-grid">
+        <div class="video-container">
+          <video id="local-video" autoplay muted playsinline></video>
+          <p>Local Video</p>
+        </div>
+      </div>
+      <div class="result" id="media-result">Click button to request camera access...</div>
+    </div>
+
+    <!-- Full Loopback Video Test -->
+    <div class="test-section">
+      <h2>5. Video Loopback (Camera → PeerConnection → Display)</h2>
+      <p>Full video loopback through RTCPeerConnection:</p>
+      <button onclick="testVideoLoopback()">Start Video Loopback</button>
+      <button onclick="stopVideoLoopback()">Stop</button>
+      <div class="video-grid">
+        <div class="video-container">
+          <video id="loopback-local" autoplay muted playsinline></video>
+          <p>Local (Camera)</p>
+        </div>
+        <div class="video-container">
+          <video id="loopback-remote" autoplay playsinline></video>
+          <p>Remote (via WebRTC)</p>
+        </div>
+      </div>
+      <div class="result" id="loopback-result">Click button to start video loopback test...</div>
+    </div>
+
+    <!-- Run All Tests -->
+    <div class="test-section">
+      <h2>Run All Tests</h2>
+      <button onclick="runAllTests()">Run All Tests</button>
+      <div class="result" id="all-tests-result">Click to run all WebRTC tests...</div>
+    </div>
+  </div>
+
+  <script>
+    console.log('[WebRTC Test] Page loaded');
+
+    let localStream = null;
+    let loopbackPcs = { local: null, remote: null };
+
+    // Test STUN servers
+    async function testStunServers() {
+      const result = document.getElementById('stun-result');
+      result.innerHTML = 'Testing STUN servers...\n';
+
+      const stunServers = [
+        'stun:stun.l.google.com:19302',
+        'stun:stun1.l.google.com:19302',
+        'stun:stun.stunprotocol.org:3478'
+      ];
+
+      for (const server of stunServers) {
+        try {
+          result.innerHTML += `Testing ${server}... `;
+
+          const pc = new RTCPeerConnection({ iceServers: [{ urls: server }] });
+          pc.createDataChannel('test');
+
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+
+          // Wait for at least one candidate
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
+            pc.onicecandidate = (e) => {
+              if (e.candidate && e.candidate.type === 'srflx') {
+                clearTimeout(timeout);
+                resolve(e.candidate);
+              }
+            };
+            pc.onicegatheringstatechange = () => {
+              if (pc.iceGatheringState === 'complete') {
+                clearTimeout(timeout);
+                resolve(null);
+              }
+            };
+          });
+
+          pc.close();
+          result.innerHTML += '<span class="success">OK</span>\n';
+        } catch (e) {
+          result.innerHTML += `<span class="error">FAILED: ${e.message}</span>\n`;
+        }
+      }
+
+      result.innerHTML += '\nSTUN server test complete.';
+    }
+
+    // Test RTCPeerConnection
+    async function testPeerConnection() {
+      const result = document.getElementById('peer-result');
+      result.innerHTML = 'Creating RTCPeerConnection...\n';
+
+      try {
+        // Check if RTCPeerConnection is available
+        result.innerHTML += 'RTCPeerConnection available: ' + (typeof RTCPeerConnection === 'function') + '\n';
+
+        const pc = new RTCPeerConnection();
+        result.innerHTML += 'Created peer connection\n';
+
+        pc.createDataChannel('test');
+
+        const offer = await pc.createOffer();
+        result.innerHTML += 'Created offer: ' + offer.type + '\n';
+        result.innerHTML += 'SDP length: ' + offer.sdp.length + ' bytes\n';
+
+        await pc.setLocalDescription(offer);
+        result.innerHTML += 'Set local description\n';
+
+        // Collect ICE candidates
+        const candidates = [];
+        await new Promise((resolve) => {
+          pc.onicecandidate = (e) => {
+            if (e.candidate) {
+              candidates.push(e.candidate);
+              result.innerHTML += `ICE candidate: ${e.candidate.type || 'unknown'} ${e.candidate.address || ''}\n`;
+            }
+          };
+          pc.onicegatheringstatechange = () => {
+            result.innerHTML += `Gathering state: ${pc.iceGatheringState}\n`;
+            if (pc.iceGatheringState === 'complete') resolve();
+          };
+          setTimeout(resolve, 10000); // Max 10 seconds
+        });
+
+        result.innerHTML += `\nTotal candidates gathered: ${candidates.length}\n`;
+        result.innerHTML += '<span class="success">RTCPeerConnection test passed!</span>';
+
+        pc.close();
+      } catch (e) {
+        result.innerHTML += `<span class="error">Error: ${e.message}</span>`;
+      }
+    }
+
+    // Test Data Channel
+    async function testDataChannel() {
+      const result = document.getElementById('data-result');
+      result.innerHTML = 'Setting up data channel loopback...\n';
+
+      try {
+        const pc1 = new RTCPeerConnection();
+        const pc2 = new RTCPeerConnection();
+
+        // Exchange ICE candidates
+        pc1.onicecandidate = (e) => {
+          if (e.candidate) pc2.addIceCandidate(e.candidate);
+        };
+        pc2.onicecandidate = (e) => {
+          if (e.candidate) pc1.addIceCandidate(e.candidate);
+        };
+
+        // Create data channel
+        const dc1 = pc1.createDataChannel('test');
+        let dc2 = null;
+
+        const messageReceived = new Promise((resolve) => {
+          pc2.ondatachannel = (e) => {
+            dc2 = e.channel;
+            dc2.onmessage = (msg) => {
+              result.innerHTML += `Received: "${msg.data}"\n`;
+              resolve(msg.data);
+            };
+          };
+        });
+
+        // Create offer/answer
+        const offer = await pc1.createOffer();
+        await pc1.setLocalDescription(offer);
+        await pc2.setRemoteDescription(offer);
+
+        const answer = await pc2.createAnswer();
+        await pc2.setLocalDescription(answer);
+        await pc1.setRemoteDescription(answer);
+
+        result.innerHTML += 'Signaling complete, waiting for connection...\n';
+
+        // Wait for channel to open
+        await new Promise((resolve) => {
+          dc1.onopen = resolve;
+          setTimeout(resolve, 5000);
+        });
+
+        if (dc1.readyState === 'open') {
+          result.innerHTML += 'Data channel open!\n';
+          const testMessage = 'Hello WebRTC! ' + Date.now();
+          result.innerHTML += `Sending: "${testMessage}"\n`;
+          dc1.send(testMessage);
+
+          const received = await Promise.race([
+            messageReceived,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          ]);
+
+          if (received === testMessage) {
+            result.innerHTML += '<span class="success">Data channel loopback successful!</span>';
+          } else {
+            result.innerHTML += '<span class="error">Message mismatch</span>';
+          }
+        } else {
+          result.innerHTML += '<span class="error">Data channel failed to open</span>';
+        }
+
+        pc1.close();
+        pc2.close();
+      } catch (e) {
+        result.innerHTML += `<span class="error">Error: ${e.message}</span>`;
+      }
+    }
+
+    // Test getUserMedia
+    async function testGetUserMedia() {
+      const result = document.getElementById('media-result');
+      const video = document.getElementById('local-video');
+      result.innerHTML = 'Requesting camera access...\n';
+
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
+        });
+
+        video.srcObject = localStream;
+        result.innerHTML += 'Camera access granted!\n';
+        result.innerHTML += `Video tracks: ${localStream.getVideoTracks().length}\n`;
+        result.innerHTML += `Audio tracks: ${localStream.getAudioTracks().length}\n`;
+
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          const settings = videoTrack.getSettings();
+          result.innerHTML += `Resolution: ${settings.width}x${settings.height}\n`;
+        }
+
+        result.innerHTML += '<span class="success">getUserMedia successful!</span>';
+      } catch (e) {
+        result.innerHTML += `<span class="error">Error: ${e.message}</span>`;
+      }
+    }
+
+    function stopMedia() {
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+        document.getElementById('local-video').srcObject = null;
+        document.getElementById('media-result').innerHTML += '\nCamera stopped.';
+      }
+    }
+
+    // Test Video Loopback
+    async function testVideoLoopback() {
+      const result = document.getElementById('loopback-result');
+      const localVideo = document.getElementById('loopback-local');
+      const remoteVideo = document.getElementById('loopback-remote');
+      result.innerHTML = 'Setting up video loopback...\n';
+
+      try {
+        // Get camera
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        localVideo.srcObject = stream;
+        result.innerHTML += 'Camera acquired\n';
+
+        // Create peer connections
+        const pc1 = new RTCPeerConnection();
+        const pc2 = new RTCPeerConnection();
+        loopbackPcs = { local: pc1, remote: pc2 };
+
+        // Add tracks to pc1
+        stream.getTracks().forEach(track => pc1.addTrack(track, stream));
+        result.innerHTML += 'Tracks added to local peer\n';
+
+        // ICE candidate exchange
+        pc1.onicecandidate = (e) => {
+          if (e.candidate) pc2.addIceCandidate(e.candidate);
+        };
+        pc2.onicecandidate = (e) => {
+          if (e.candidate) pc1.addIceCandidate(e.candidate);
+        };
+
+        // Handle remote stream
+        pc2.ontrack = (e) => {
+          result.innerHTML += 'Remote track received!\n';
+          remoteVideo.srcObject = e.streams[0];
+        };
+
+        // Create offer/answer
+        const offer = await pc1.createOffer();
+        await pc1.setLocalDescription(offer);
+        await pc2.setRemoteDescription(offer);
+
+        const answer = await pc2.createAnswer();
+        await pc2.setLocalDescription(answer);
+        await pc1.setRemoteDescription(answer);
+
+        result.innerHTML += 'Signaling complete\n';
+
+        // Wait for connection
+        await new Promise((resolve) => {
+          const check = () => {
+            if (pc1.connectionState === 'connected') {
+              resolve();
+            } else if (pc1.connectionState === 'failed') {
+              resolve();
+            } else {
+              setTimeout(check, 100);
+            }
+          };
+          check();
+          setTimeout(resolve, 10000);
+        });
+
+        result.innerHTML += `Connection state: ${pc1.connectionState}\n`;
+
+        if (pc1.connectionState === 'connected') {
+          result.innerHTML += '<span class="success">Video loopback working!</span>';
+        } else {
+          result.innerHTML += '<span class="pending">Connection state: ' + pc1.connectionState + '</span>';
+        }
+      } catch (e) {
+        result.innerHTML += `<span class="error">Error: ${e.message}</span>`;
+      }
+    }
+
+    function stopVideoLoopback() {
+      if (loopbackPcs.local) {
+        loopbackPcs.local.close();
+        loopbackPcs.remote.close();
+        loopbackPcs = { local: null, remote: null };
+      }
+      document.getElementById('loopback-local').srcObject = null;
+      document.getElementById('loopback-remote').srcObject = null;
+      document.getElementById('loopback-result').innerHTML += '\nLoopback stopped.';
+    }
+
+    // Run all tests
+    async function runAllTests() {
+      const result = document.getElementById('all-tests-result');
+      const tests = [];
+
+      result.innerHTML = '=== WEBRTC TEST SUITE ===\n\n';
+
+      // Test 1: RTCPeerConnection exists
+      tests.push('RTCPeerConnection available: ' + (typeof RTCPeerConnection === 'function'));
+
+      // Test 2: getUserMedia exists
+      tests.push('getUserMedia available: ' + (typeof navigator.mediaDevices?.getUserMedia === 'function'));
+
+      // Test 3: RTCSessionDescription exists
+      tests.push('RTCSessionDescription available: ' + (typeof RTCSessionDescription === 'function'));
+
+      // Test 4: RTCIceCandidate exists
+      tests.push('RTCIceCandidate available: ' + (typeof RTCIceCandidate === 'function'));
+
+      // Test 5: Create a peer connection
+      try {
+        const pc = new RTCPeerConnection();
+        tests.push('Create RTCPeerConnection: PASS');
+        pc.close();
+      } catch (e) {
+        tests.push('Create RTCPeerConnection: FAIL - ' + e.message);
+      }
+
+      result.innerHTML += tests.join('\n') + '\n\n=== ALL TESTS COMPLETE ===';
+    }
+  </script>
+</body>
+</html>

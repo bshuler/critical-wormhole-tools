@@ -783,4 +783,45 @@ test.describe('Full End-to-End Test', () => {
     console.log('=== INDEXEDDB TEST PASSED ===');
     await page.close();
   });
+
+  test('webrtc - RTCPeerConnection works with public STUN servers', async ({ context, extensionId, whServer }) => {
+    console.log('=== TESTING WEBRTC ===');
+
+    const page = await context.newPage();
+    page.on('console', msg => console.log('PAGE:', msg.type(), msg.text()));
+
+    const viewerUrl = `chrome-extension://${extensionId}/viewer.html?address=${whServer.code}&connectionId=test-webrtc&path=/webrtc-test`;
+    await page.goto(viewerUrl);
+
+    const sandbox = page.frameLocator('#wh-sandbox');
+    await sandbox.locator('h1:has-text("WebRTC Test")').waitFor({ timeout: 60000 });
+    console.log('WebRTC test page loaded');
+
+    // Run the comprehensive test
+    console.log('Running WebRTC tests...');
+    const runAllBtn = sandbox.locator('button:has-text("Run All Tests")');
+    await runAllBtn.click();
+    await page.waitForTimeout(1000);
+
+    const allTestsResult = await sandbox.locator('#all-tests-result').textContent();
+    console.log('WebRTC tests result:', allTestsResult);
+
+    // Verify RTCPeerConnection is available
+    expect(allTestsResult).toContain('RTCPeerConnection available: true');
+    expect(allTestsResult).toContain('Create RTCPeerConnection: PASS');
+
+    // Test peer connection creation
+    console.log('Testing peer connection...');
+    const peerBtn = sandbox.locator('button:has-text("Test Peer Connection")');
+    await peerBtn.click();
+    await page.waitForTimeout(5000); // Wait for ICE gathering
+
+    const peerResult = await sandbox.locator('#peer-result').textContent();
+    console.log('Peer connection result:', peerResult.substring(0, 300));
+    expect(peerResult).toContain('Created peer connection');
+    expect(peerResult).toContain('Created offer');
+
+    console.log('=== WEBRTC TEST PASSED ===');
+    await page.close();
+  });
 });
