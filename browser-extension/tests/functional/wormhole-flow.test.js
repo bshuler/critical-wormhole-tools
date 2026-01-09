@@ -55,7 +55,15 @@ class MockMailboxServer {
           np.claimed.push(clientState.side);
         }
         this.nameplates.set(msg.nameplate, np);
-        return { type: 'claimed', id: msg.id, mailbox: `mb-${msg.nameplate}` };
+        // Send ACK first (with id), then send claimed message (without id)
+        // This matches real wormhole relay behavior
+        setTimeout(() => {
+          clientState.client.handleMessage({
+            type: 'claimed',
+            mailbox: `mb-${msg.nameplate}`
+          });
+        }, 2);
+        return { type: 'ack', id: msg.id };
       }
 
       case 'open': {
@@ -91,18 +99,21 @@ class MockMailboxServer {
         };
         mb.messages.push(message);
 
-        // Deliver to other clients in mailbox
-        for (const otherId of mb.clients) {
-          if (otherId !== clientId) {
-            const otherState = this.clients.get(otherId);
-            if (otherState && otherState.client) {
-              otherState.client.handleMessage({
-                type: 'message',
-                ...message
-              });
+        // Deliver to other clients in mailbox ASYNCHRONOUSLY
+        // This allows waitForPhase handlers to be set up before delivery
+        setTimeout(() => {
+          for (const otherId of mb.clients) {
+            if (otherId !== clientId) {
+              const otherState = this.clients.get(otherId);
+              if (otherState && otherState.client) {
+                otherState.client.handleMessage({
+                  type: 'message',
+                  ...message
+                });
+              }
             }
           }
-        }
+        }, 5);
 
         return { type: 'ack', id: msg.id };
       }
@@ -127,17 +138,15 @@ function createMockClient(server) {
   const client = new MailboxClient('mock://server', 'test/v1');
 
   const clientId = server.addClient(client);
-  let messageQueue = [];
-  let waitingResolve = null;
 
   // Override send to route through mock server
   client.send = (msg) => {
     const response = server.handleMessage(clientId, msg);
     if (response) {
-      // Deliver response async
+      // Deliver response async to allow handlers to be set up
       setTimeout(() => {
         client.handleMessage(response);
-      }, 0);
+      }, 1);
     }
   };
 

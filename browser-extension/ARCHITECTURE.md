@@ -340,10 +340,10 @@ browser-extension/
 - [ ] Test vectors validation
 
 ### Phase 2: Wormhole Protocol
-- [ ] Mailbox WebSocket client
-- [ ] SPAKE2 key exchange integration
-- [ ] WebRTC transit handler
-- [ ] Basic dilation support
+- [x] Mailbox WebSocket client
+- [x] SPAKE2 key exchange integration
+- [x] WebRTC transit handler
+- [x] Basic dilation support (subchannel multiplexing over WebRTC)
 
 ### Phase 3: WNS Implementation
 - [ ] Identity generation/storage

@@ -622,6 +622,13 @@ window.addEventListener('popstate', (event) => {
  * Initial load
  */
 async function init() {
+  // Check for error parameter (from failed omnibox/popup connection)
+  const errorParam = params.get('error');
+  if (errorParam) {
+    showError(`Connection to ${address || 'unknown'} failed: ${errorParam}`);
+    return;
+  }
+
   if (!address) {
     showError('No wormhole address specified');
     return;

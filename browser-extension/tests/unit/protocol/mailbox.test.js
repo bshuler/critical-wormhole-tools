@@ -180,10 +180,14 @@ describe('MailboxClient', () => {
       const msg = client.ws.sentMessages.find(m => m.type === 'claim');
       expect(msg.nameplate).toBe('42');
 
-      client.handleMessage({ type: 'claimed', id: msg.id, mailbox: 'mb42' });
-      await claimPromise;
+      // First send ack for the request
+      client.handleMessage({ type: 'ack', id: msg.id });
+      // Then send the claimed message (which contains the mailbox ID)
+      client.handleMessage({ type: 'claimed', mailbox: 'mb42' });
+      const result = await claimPromise;
 
       expect(client.nameplate).toBe('42');
+      expect(result.mailbox).toBe('mb42');
     });
   });
 
@@ -220,7 +224,7 @@ describe('MailboxClient', () => {
       await expect(client.addMessage('pake', 'data')).rejects.toThrow('Mailbox not open');
     });
 
-    it('sends add with phase and body', async () => {
+    it('sends add with phase and hex-encoded body', async () => {
       const client = new MailboxClient();
       client.state = 'open';
       client.ws = testUtils.createMockWebSocket('ws://test');
@@ -230,13 +234,14 @@ describe('MailboxClient', () => {
       await new Promise(r => setTimeout(r, 10));
       const msg = client.ws.sentMessages.find(m => m.type === 'add');
       expect(msg.phase).toBe('pake');
-      expect(msg.body).toBe('{"key":"value"}');
+      // Body is hex-encoded for magic-wormhole compatibility
+      expect(msg.body).toBe('7b226b6579223a2276616c7565227d'); // hex of '{"key":"value"}'
 
       client.handleMessage({ type: 'ack', id: msg.id });
       await addPromise;
     });
 
-    it('handles string body directly', async () => {
+    it('handles string body with hex encoding', async () => {
       const client = new MailboxClient();
       client.state = 'open';
       client.ws = testUtils.createMockWebSocket('ws://test');
@@ -245,7 +250,8 @@ describe('MailboxClient', () => {
 
       await new Promise(r => setTimeout(r, 10));
       const msg = client.ws.sentMessages.find(m => m.type === 'add');
-      expect(msg.body).toBe('raw-string');
+      // Body is hex-encoded for magic-wormhole compatibility
+      expect(msg.body).toBe('7261772d737472696e67'); // hex of 'raw-string'
 
       client.handleMessage({ type: 'ack', id: msg.id });
       await addPromise;

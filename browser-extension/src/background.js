@@ -6,6 +6,7 @@
  */
 
 import { Wormhole, WormholeState, connectWormhole } from './lib/protocol/wormhole.js';
+import { DilationState } from './lib/protocol/dilation.js';
 import { Advertisement, verifyAdvertisement } from './lib/wns/advertisement.js';
 import { DEFAULT_RELAY } from './lib/protocol/mailbox.js';
 
@@ -13,7 +14,8 @@ import { DEFAULT_RELAY } from './lib/protocol/mailbox.js';
 const CONFIG = {
   relayUrl: DEFAULT_RELAY,
   appId: 'wh.tools/v1',
-  defaultTTL: 300
+  defaultTTL: 300,
+  useDilation: true  // Enable dilation for better performance
 };
 
 // Active connections cache
@@ -152,13 +154,23 @@ async function resolveAddress(address) {
 /**
  * Ensure a wormhole connection exists to the given address
  * @param {string} address - WNS address or wormhole code
+ * @param {boolean} useDilation - Whether to dilate the connection (default: CONFIG.useDilation)
  * @returns {Promise<Wormhole>}
  */
-async function ensureConnection(address) {
+async function ensureConnection(address, useDilation = CONFIG.useDilation) {
   // Check for existing connection
   let wormhole = activeConnections.get(address);
 
-  if (wormhole && wormhole.state === WormholeState.CONNECTED) {
+  if (wormhole && (wormhole.state === WormholeState.CONNECTED || wormhole.state === WormholeState.DILATED)) {
+    // If we need dilation but aren't dilated yet, try to dilate
+    if (useDilation && !wormhole.isDilated && wormhole.state === WormholeState.CONNECTED) {
+      try {
+        console.log('Dilating existing connection to:', address);
+        await wormhole.dilate();
+      } catch (e) {
+        console.warn('Dilation failed, continuing with undilated connection:', e.message);
+      }
+    }
     return wormhole;
   }
 
@@ -186,6 +198,18 @@ async function ensureConnection(address) {
     wormhole = await Promise.race([connectPromise, timeoutPromise]);
     console.log('Wormhole connected, state:', wormhole.state);
     console.log('Peer connected!');
+
+    // Try to dilate if enabled
+    if (useDilation) {
+      try {
+        console.log('Attempting to dilate connection...');
+        await wormhole.dilate();
+        console.log('Connection dilated successfully!');
+      } catch (e) {
+        console.warn('Dilation failed, continuing with undilated connection:', e.message);
+        // Continue without dilation - fall back to phase-based messaging
+      }
+    }
 
   } catch (error) {
     console.error('Connection failed:', error.message);
@@ -281,8 +305,24 @@ const connectionToAddress = new Map();
 // Track WebSocket streams (wsId -> {address, streamId, port})
 const activeWebSocketStreams = new Map();
 
+// Request queues per address to serialize wormhole requests
+// (phase-based protocol doesn't support concurrent requests)
+const requestQueues = new Map();
+
+/**
+ * Get or create a request queue for an address
+ */
+function getRequestQueue(address) {
+  if (!requestQueues.has(address)) {
+    requestQueues.set(address, Promise.resolve());
+  }
+  return requestQueues.get(address);
+}
+
 /**
  * Fetch a page over an existing wormhole connection
+ * Uses dilated subchannels when available for concurrent requests,
+ * falls back to serialized phase-based messaging otherwise.
  * @param {string} address - Wormhole address
  * @param {string} path - HTTP path
  * @param {string} method - HTTP method
@@ -291,7 +331,7 @@ const activeWebSocketStreams = new Map();
  */
 async function fetchOverWormhole(address, path, method = 'GET', body = null) {
   const wormhole = activeConnections.get(address);
-  if (!wormhole || wormhole.state !== WormholeState.CONNECTED) {
+  if (!wormhole || (wormhole.state !== WormholeState.CONNECTED && wormhole.state !== WormholeState.DILATED)) {
     throw new Error('No active connection to ' + address);
   }
 
@@ -310,21 +350,129 @@ async function fetchOverWormhole(address, path, method = 'GET', body = null) {
     httpRequest.headers['Content-Type'] = 'application/json';
   }
 
-  console.log('Fetching over wormhole:', method, path);
-  await wormhole.send(JSON.stringify(httpRequest));
+  console.log('Fetching over wormhole:', method, path, 'dilated:', wormhole.isDilated);
 
-  const responseData = await wormhole.receive(30000);
-  const response = JSON.parse(new TextDecoder().decode(responseData));
-
-  // Extract content type from headers if present
-  if (response.headers) {
-    const contentType = response.headers['Content-Type'] ||
-                        response.headers['content-type'] ||
-                        'text/html';
-    response.contentType = contentType;
+  // Use dilated subchannel if available (allows concurrent requests)
+  if (wormhole.isDilated) {
+    return fetchOverDilatedWormhole(wormhole, httpRequest);
   }
 
-  return response;
+  // Fall back to serialized phase-based messaging
+  return fetchOverUndilatedWormhole(address, wormhole, httpRequest);
+}
+
+/**
+ * Fetch using dilated subchannel (supports concurrent requests)
+ * @param {Wormhole} wormhole
+ * @param {object} httpRequest
+ * @returns {Promise<object>}
+ */
+async function fetchOverDilatedWormhole(wormhole, httpRequest) {
+  try {
+    // Open a new subchannel for this request
+    const connector = wormhole.connectorFor('wh-http');
+    const subchannel = await connector.connect();
+
+    // Send request
+    await subchannel.send(JSON.stringify(httpRequest));
+
+    // Wait for response
+    const response = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('HTTP request timeout'));
+      }, 30000);
+
+      let responseData = new Uint8Array(0);
+
+      subchannel.onData = (data) => {
+        // Accumulate data
+        const newData = new Uint8Array(responseData.length + data.length);
+        newData.set(responseData);
+        newData.set(data, responseData.length);
+        responseData = newData;
+
+        // Try to parse as JSON (response might come in chunks)
+        try {
+          const text = new TextDecoder().decode(responseData);
+          const parsed = JSON.parse(text);
+          clearTimeout(timeout);
+          resolve(parsed);
+        } catch {
+          // Not complete yet, wait for more data
+        }
+      };
+
+      subchannel.onClose = () => {
+        clearTimeout(timeout);
+        if (responseData.length > 0) {
+          try {
+            const text = new TextDecoder().decode(responseData);
+            resolve(JSON.parse(text));
+          } catch {
+            reject(new Error('Invalid response data'));
+          }
+        } else {
+          reject(new Error('Subchannel closed without response'));
+        }
+      };
+
+      subchannel.onError = (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      };
+    });
+
+    // Close subchannel
+    await subchannel.close();
+
+    // Extract content type from headers if present
+    if (response.headers) {
+      const contentType = response.headers['Content-Type'] ||
+                          response.headers['content-type'] ||
+                          'text/html';
+      response.contentType = contentType;
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Dilated fetch failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch using serialized phase-based messaging (for undilated connections)
+ * @param {string} address
+ * @param {Wormhole} wormhole
+ * @param {object} httpRequest
+ * @returns {Promise<object>}
+ */
+async function fetchOverUndilatedWormhole(address, wormhole, httpRequest) {
+  // Serialize requests to prevent phase interleaving
+  const currentQueue = getRequestQueue(address);
+
+  const requestPromise = currentQueue.then(async () => {
+    console.log('Sending request via phase-based messaging');
+    await wormhole.send(JSON.stringify(httpRequest));
+
+    const responseData = await wormhole.receive(30000);
+    const response = JSON.parse(new TextDecoder().decode(responseData));
+
+    // Extract content type from headers if present
+    if (response.headers) {
+      const contentType = response.headers['Content-Type'] ||
+                          response.headers['content-type'] ||
+                          'text/html';
+      response.contentType = contentType;
+    }
+
+    return response;
+  });
+
+  // Update queue to wait for this request (but don't propagate errors to next request)
+  requestQueues.set(address, requestPromise.catch(() => {}));
+
+  return requestPromise;
 }
 
 /**
@@ -365,25 +513,11 @@ chrome.omnibox.onInputEntered.addListener(async (text, disposition) => {
   } catch (error) {
     console.error('Omnibox navigation failed:', error);
 
-    // Show error page
-    const errorHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head><title>Wormhole Error</title></head>
-      <body style="font-family: system-ui, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto;">
-        <h1>Connection Failed</h1>
-        <p>Could not connect to <strong>${text}</strong></p>
-        <p style="color: #666;">${error.message}</p>
-        <h2>Troubleshooting</h2>
-        <ul>
-          <li>Make sure the address is correct</li>
-          <li>The host might be offline</li>
-          <li>Check if you have the wormhole code saved</li>
-        </ul>
-      </body>
-      </html>
-    `;
-    const errorUrl = `data:text/html;base64,${btoa(errorHtml)}`;
+    // Show error in viewer page (data URLs are blocked for top-level navigation)
+    const errorUrl = chrome.runtime.getURL('viewer.html') +
+      `?address=${encodeURIComponent(text)}` +
+      `&error=${encodeURIComponent(error.message)}` +
+      `&connectionId=error`;
     chrome.tabs.update({ url: errorUrl });
   }
 });
@@ -462,10 +596,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({
         connected: true,
         standalone: true,
+        dilationEnabled: CONFIG.useDilation,
         connections: Object.fromEntries(
           Array.from(activeConnections.entries()).map(([addr, wh]) => [
             addr,
-            { state: wh.state, code: wh.code }
+            {
+              state: wh.state,
+              code: wh.code,
+              isDilated: wh.isDilated || false
+            }
           ])
         )
       });
