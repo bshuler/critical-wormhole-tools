@@ -188,6 +188,19 @@ wh curl --code 2-ocean-breeze -X POST -d '{"key":"value"}' https://api.example.c
 wh wget --code 2-ocean-breeze https://example.com/large-file.zip
 ```
 
+### 7. File Serving (`wh listen --serve`)
+
+Serve a directory of files through wormhole, accessible via browser extension:
+
+**Server:**
+```bash
+wh listen --serve ./my-website
+# Output: Listening on code: 4-sunset-river
+```
+
+**Browser:**
+Navigate to `wh://4-sunset-river` using the browser extension.
+
 ---
 
 ## Wormhole Name Service (WNS)
@@ -366,6 +379,7 @@ Known hosts are stored in `~/.wh/known_hosts/`.
 | `wh nc` | Netcat-style bidirectional pipe | `wh nc 7-guitar-sunset` |
 | `wh nc -l` | Listen for incoming connections | `wh nc -l` |
 | `wh listen` | Multi-purpose listener daemon | `wh listen --ssh` |
+| `wh listen --serve` | Serve files via wormhole | `wh listen --serve ./dir` |
 | `wh ssh` | SSH client over wormhole | `wh ssh 3-castle-thunder` |
 | `wh scp` | Secure copy files | `wh scp code:/remote ./local` |
 | `wh sftp` | Interactive SFTP session | `wh sftp 3-castle-thunder` |
@@ -586,56 +600,163 @@ WNS stores data in `~/.wh/`:
 
 ---
 
+## Browser Extension
+
+Browse websites hosted on wormhole addresses directly in your browser. The extension implements the complete Magic Wormhole protocol in JavaScript—no daemon or CLI tools required.
+
+### Features
+
+- **Standalone**: Full protocol implementation in JavaScript
+- **Navigate to wh:// URLs**: Type `wh://7-guitar-sunset` in the address bar
+- **WNS Support**: Persistent addresses with automatic code discovery
+- **WebRTC Transit**: Direct peer-to-peer connections
+- **End-to-End Encryption**: SPAKE2 + NaCl encryption
+
+### Installation
+
+```bash
+cd browser-extension
+npm install
+npm run build
+```
+
+**Chrome/Edge:**
+1. Open `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked" → select `dist` directory
+
+**Firefox:**
+1. Open `about:debugging#/runtime/this-firefox`
+2. Click "Load Temporary Add-on"
+3. Select `dist/manifest.json`
+
+### Hosting a Website via Wormhole
+
+```bash
+# Serve files directly through wormhole
+wh listen --serve ./my-website
+# Output: Listening on code: 7-guitar-sunset
+
+# Or forward a local HTTP server
+python -m http.server 8080 &
+wh listen -p 8080
+```
+
+Then navigate to `wh://7-guitar-sunset` in your browser.
+
+### Web API Support
+
+The extension provides extensive API proxying for a native-like experience:
+
+| Feature | Status |
+|---------|--------|
+| fetch() / XHR | ✅ Full |
+| localStorage / sessionStorage | ✅ Full |
+| Cookies | ✅ Full |
+| Forms with file upload | ✅ Full |
+| WebSockets | ✅ Full |
+| Web Workers | ✅ Full |
+| IndexedDB | ✅ Full |
+| History API | ✅ Full |
+| WebRTC | ✅ Full |
+| Geolocation | ⚠️ Partial |
+| Service Workers | ❌ Not supported |
+
+See [browser-extension/README.md](browser-extension/README.md) for full details.
+
+---
+
 ## Development
 
 ### Setup
 
 ```bash
 git clone https://github.com/bshuler/critical-wormhole-tools.git
-cd cwt
+cd critical-wormhole-tools
 pip install -e ".[dev]"
 ```
 
 ### Run Tests
 
+The project has comprehensive test coverage across Python and JavaScript:
+
+**Python Tests (419 unit tests + integration tests):**
+
 ```bash
 # All tests
 pytest
 
-# Unit tests only (fast)
+# Unit tests only (fast, ~0.5s)
 pytest tests/unit
+
+# Integration tests (requires network)
+pytest tests/integration
 
 # With coverage
 pytest --cov=wh --cov-report=html
 ```
 
+**Browser Extension Tests (552 tests):**
+
+```bash
+cd browser-extension
+
+# Unit and functional tests
+npm test
+
+# E2E browser tests (Playwright)
+npm run test:e2e
+
+# All tests with coverage
+npm run test:coverage
+```
+
+### Test Coverage
+
+| Component | Tests | Coverage |
+|-----------|-------|----------|
+| Python Core | 419 | Unit tests for all modules |
+| Browser Crypto | 273 | SPAKE2, Ed25519, NaCl, HKDF |
+| Browser Protocol | 104 | Mailbox, Wormhole, Transit |
+| Browser UI | 175 | Viewer, Background, Popup |
+
 ### Code Quality
 
 ```bash
-# Linting
+# Python linting
 ruff check src tests
 
-# Type checking
+# Python type checking
 mypy src
+
+# Browser extension linting
+cd browser-extension && npm run lint
 ```
 
 ---
 
 ## Roadmap
 
+### Completed
+
+- [x] **Core Tools**: netcat, SSH, SCP, SFTP, curl, wget over wormhole
+- [x] **Network Tools**: ping, tunnel (port forwarding), proxy (SOCKS5), rsync
 - [x] **Wormhole Name Service (WNS)**: Persistent addresses with DHT discovery
 - [x] **Local Aliases**: SSH-config style petnames for addresses
 - [x] **Global Names**: First-come-first-served name registry
-- [x] **wh ping**: Network diagnostics through wormhole
-- [x] **wh tunnel**: SSH-style port forwarding
-- [x] **wh proxy**: SOCKS5 proxy through wormhole
-- [x] **wh rsync**: Efficient file synchronization
 - [x] **Built-in Relay**: Self-contained relay server (`wh relay serve`)
 - [x] **Multi-Relay Config**: Configure multiple relays (`~/.wh/relays.yaml`)
 - [x] **Code Length**: Configurable code entropy (`-c 4` for 4-word codes)
-- [x] **Browser Extension**: Chrome extension for browsing wh:// URLs
+- [x] **Browser Extension**: Full wormhole protocol in JavaScript with WebRTC
+- [x] **File Serving**: `wh listen --serve` for browser-accessible file hosting
 - [x] **Relay-Scoped WNS**: Privacy-preserving namespace encryption
+- [x] **Secure Relay**: Default relay uses TLS (`wss://`)
+
+### In Progress
+
+- [ ] **Web Store Publishing**: Chrome Web Store and Firefox Add-ons
 - [ ] **Web Server Integration**: Apache/Nginx/HAProxy wormhole modules
+- [ ] **Mobile Apps**: iOS and Android clients
 
 See [ROADMAP.md](ROADMAP.md) for detailed plans.
 
