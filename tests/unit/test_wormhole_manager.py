@@ -17,7 +17,7 @@ class TestWormholeManager:
         manager = WormholeManager()
 
         assert manager.appid == "wh.tools/v1"
-        assert manager.relay_url == "ws://relay.magic-wormhole.io:4000/v1"
+        assert manager.relay_url == "wss://relay.magic-wormhole.io/v1"
         assert manager.code_length == 2
         assert manager.code is None
         assert not manager.is_dilated

@@ -43,7 +43,7 @@ class WormholeManager:
     """
 
     DEFAULT_APPID = "wh.tools/v1"
-    DEFAULT_RELAY = "ws://relay.magic-wormhole.io:4000/v1"
+    DEFAULT_RELAY = "wss://relay.magic-wormhole.io/v1"
     DEFAULT_TRANSIT_RELAY = "tcp:transit.magic-wormhole.io:4001"
 
     def __init__(
