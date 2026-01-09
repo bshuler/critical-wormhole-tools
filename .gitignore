@@ -144,3 +144,10 @@ Thumbs.db
 *.key
 *.pem
 /tmp/
+*.bak
+*.full
+
+# Browser extension test files
+browser-extension/test-*.html
+browser-extension/test-*.mjs
+browser-extension/test-*.py
