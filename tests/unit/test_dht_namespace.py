@@ -201,3 +201,116 @@ class TestDHTClientLookup:
             asyncio.get_event_loop().run_until_complete(
                 client.lookup_multi_namespace("abc123")
             )
+
+
+class TestDHTConstants:
+    """Tests for DHT constants."""
+
+    def test_default_port(self):
+        """Test default DHT port."""
+        from wh.wns.dht import DEFAULT_DHT_PORT
+
+        assert DEFAULT_DHT_PORT == 8469
+
+    def test_default_ttl(self):
+        """Test default TTL."""
+        from wh.wns.dht import DEFAULT_TTL_SECONDS
+
+        assert DEFAULT_TTL_SECONDS == 300
+
+    def test_default_republish(self):
+        """Test default republish interval."""
+        from wh.wns.dht import DEFAULT_REPUBLISH_INTERVAL
+
+        assert DEFAULT_REPUBLISH_INTERVAL == 240
+
+
+class TestWNSDHTNodeProperties:
+    """Tests for WNSDHTNode properties."""
+
+    def test_config_stored(self):
+        """Test config is stored."""
+        from wh.wns.dht import WNSDHTNode, DHTConfig
+
+        config = DHTConfig(port=9000)
+        node = WNSDHTNode(config=config)
+
+        assert node.config.port == 9000
+
+    def test_is_running_false_initially(self):
+        """Test is_running is False initially."""
+        from wh.wns.dht import WNSDHTNode
+
+        node = WNSDHTNode()
+        assert node.is_running is False
+
+    def test_server_none_initially(self):
+        """Test _server is None initially."""
+        from wh.wns.dht import WNSDHTNode
+
+        node = WNSDHTNode()
+        assert node._server is None
+
+
+class TestWNSDHTClientProperties:
+    """Tests for WNSDHTClient properties."""
+
+    def test_relay_urls_stored(self):
+        """Test relay_urls is stored."""
+        from wh.wns.dht import WNSDHTClient
+
+        urls = ["ws://relay1:4000", "ws://relay2:4000"]
+        client = WNSDHTClient(relay_urls=urls)
+
+        assert client.relay_urls == urls
+
+    def test_is_running_false_initially(self):
+        """Test _running is False initially."""
+        from wh.wns.dht import WNSDHTClient
+
+        client = WNSDHTClient()
+        assert client._running is False
+
+
+class TestDHTConfigBootstrap:
+    """Tests for DHTConfig bootstrap nodes."""
+
+    def test_default_bootstrap_nodes(self):
+        """Test default bootstrap nodes."""
+        from wh.wns.dht import DHTConfig, DEFAULT_BOOTSTRAP_NODES
+
+        config = DHTConfig()
+        # Should have a copy of default bootstrap nodes
+        assert config.bootstrap_nodes == DEFAULT_BOOTSTRAP_NODES
+
+    def test_custom_bootstrap_nodes(self):
+        """Test custom bootstrap nodes."""
+        from wh.wns.dht import DHTConfig
+
+        nodes = [("127.0.0.1", 8469), ("localhost", 8470)]
+        config = DHTConfig(bootstrap_nodes=nodes)
+
+        assert config.bootstrap_nodes == nodes
+
+
+class TestAddressToDhtKeyEdgeCases:
+    """Edge case tests for address_to_dht_key."""
+
+    def test_empty_address(self):
+        """Test with empty address."""
+        from wh.wns.dht import address_to_dht_key
+        import hashlib
+
+        key = address_to_dht_key("")
+        expected = hashlib.sha256(b"").digest()
+        assert key == expected
+
+    def test_unicode_address(self):
+        """Test with unicode address."""
+        from wh.wns.dht import address_to_dht_key
+        import hashlib
+
+        address = "テスト"  # Japanese characters
+        key = address_to_dht_key(address)
+        expected = hashlib.sha256(address.encode("utf-8")).digest()
+        assert key == expected

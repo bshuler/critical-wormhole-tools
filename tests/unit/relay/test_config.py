@@ -147,6 +147,11 @@ class TestRelayConfigManager:
         manager.save()
         assert (temp_dir / "relays.yaml").exists()
 
+    def test_save_without_load_does_nothing(self, manager, temp_dir):
+        """Test that saving without prior load does nothing."""
+        manager.save()
+        assert not (temp_dir / "relays.yaml").exists()
+
     def test_add_relay(self, manager):
         """Test adding a new relay."""
         relay = manager.add_relay(

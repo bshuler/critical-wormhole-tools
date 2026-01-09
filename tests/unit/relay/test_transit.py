@@ -88,3 +88,54 @@ class TestTransitHandshake:
 
         for handshake in invalid_handshakes:
             assert not handshake.startswith("please relay ")
+
+
+class TestTransitRelayMethods:
+    """Tests for TransitRelay methods."""
+
+    def test_default_host(self):
+        """Test default host is 0.0.0.0."""
+        relay = TransitRelay()
+        assert relay.host == "0.0.0.0"
+
+    def test_default_port(self):
+        """Test default port is 4001."""
+        relay = TransitRelay()
+        assert relay.port == 4001
+
+    def test_running_property(self):
+        """Test _running property."""
+        relay = TransitRelay()
+        assert relay._running is False
+
+    def test_stats_bytes_relayed(self):
+        """Test bytes_relayed stat initialization."""
+        relay = TransitRelay()
+        assert relay.stats["bytes_relayed"] == 0
+
+    def test_stats_pairs_matched(self):
+        """Test pairs_matched stat initialization."""
+        relay = TransitRelay()
+        assert relay.stats["pairs_matched"] == 0
+
+    def test_multiple_pending(self):
+        """Test multiple pending connections."""
+        relay = TransitRelay()
+        for i in range(5):
+            relay.pending[f"token{i}"] = PendingConnection(
+                reader=None,  # type: ignore
+                writer=None,  # type: ignore
+                token=f"token{i}",
+            )
+        assert len(relay.pending) == 5
+
+    def test_remove_pending(self):
+        """Test removing pending connections."""
+        relay = TransitRelay()
+        relay.pending["token1"] = PendingConnection(
+            reader=None,  # type: ignore
+            writer=None,  # type: ignore
+            token="token1",
+        )
+        del relay.pending["token1"]
+        assert "token1" not in relay.pending

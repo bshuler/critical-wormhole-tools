@@ -110,3 +110,79 @@ class TestMailboxServer:
         assert server._running is False
         assert server._server is None
         assert len(server.client_subscriptions) == 0
+
+    def test_default_host(self):
+        """Test default host is 0.0.0.0."""
+        server = MailboxServer()
+        assert server.host == "0.0.0.0"
+
+    def test_default_port(self):
+        """Test default port is 4000."""
+        server = MailboxServer()
+        assert server.port == 4000
+
+    def test_default_app_id(self):
+        """Test default app ID."""
+        server = MailboxServer()
+        assert server.app_id == "wh.tools/v1"
+
+    def test_nameplate_lock_exists(self):
+        """Test nameplate lock exists."""
+        import asyncio
+        server = MailboxServer()
+        assert isinstance(server._nameplate_lock, asyncio.Lock)
+
+
+class TestMailboxMethods:
+    """Additional tests for Mailbox methods."""
+
+    def test_mailbox_empty_sides(self):
+        """Test mailbox sides set is empty initially."""
+        mailbox = Mailbox(id="test")
+        assert isinstance(mailbox.sides, set)
+        assert len(mailbox.sides) == 0
+
+    def test_mailbox_add_side(self):
+        """Test adding a side to mailbox."""
+        mailbox = Mailbox(id="test")
+        mailbox.sides.add("side1")
+        assert "side1" in mailbox.sides
+
+    def test_mailbox_multiple_phases(self):
+        """Test messages with multiple phases."""
+        mailbox = Mailbox(id="test")
+        mailbox.add_message("side1", "pake", "pake_msg")
+        mailbox.add_message("side1", "version", "version_msg")
+        mailbox.add_message("side1", "0", "phase0_msg")
+
+        phases = [m.phase for m in mailbox.messages]
+        assert "pake" in phases
+        assert "version" in phases
+        assert "0" in phases
+
+    def test_get_messages_no_exclusion(self):
+        """Test get_messages without exclusion."""
+        mailbox = Mailbox(id="test")
+        mailbox.add_message("side1", "pake", "msg1")
+        mailbox.add_message("side2", "pake", "msg2")
+
+        msgs = mailbox.get_messages()
+        assert len(msgs) == 2
+
+
+class TestNameplateMethods:
+    """Additional tests for Nameplate methods."""
+
+    def test_nameplate_sides_set(self):
+        """Test nameplate sides is a set."""
+        nameplate = Nameplate(id="1", mailbox_id="abc")
+        assert isinstance(nameplate.sides, set)
+
+    def test_nameplate_max_two_sides(self):
+        """Test nameplate typically has max two sides."""
+        nameplate = Nameplate(id="1", mailbox_id="abc")
+        nameplate.sides.add("side1")
+        nameplate.sides.add("side2")
+        # Can't add third side with same name
+        nameplate.sides.add("side1")
+        assert len(nameplate.sides) == 2

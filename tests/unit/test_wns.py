@@ -448,3 +448,124 @@ class TestGlobalNames:
         assert store.delete_claim("laptop") is True
         claims = store.list_claims()
         assert len(claims) == 1
+
+
+class TestWNSIdentityAdditional:
+    """Additional tests for WNSIdentity."""
+
+    def test_to_dict(self):
+        """Test identity to_dict method."""
+        identity = WNSIdentity.generate(name="test")
+        d = identity.to_dict()
+
+        assert "address" in d
+        assert "public_key" in d
+        assert d["address"] == identity.address
+
+    def test_from_dict(self):
+        """Test identity from_dict method."""
+        identity = WNSIdentity.generate(name="test")
+        d = identity.to_dict()
+
+        restored = WNSIdentity.from_dict(d)
+        assert restored.address == identity.address
+
+    def test_private_key_property(self):
+        """Test private_key property."""
+        identity = WNSIdentity.generate()
+        pk = identity.private_key
+
+        assert pk is not None
+        assert len(pk) > 0
+
+
+class TestWNSIdentityStoreAdditional:
+    """Additional tests for WNSIdentityStore."""
+
+    def test_load_nonexistent(self, tmp_path):
+        """Test loading nonexistent identity."""
+        store = WNSIdentityStore(base_path=tmp_path)
+        result = store.load_identity("nonexistent")
+        assert result is None
+
+    def test_delete_nonexistent(self, tmp_path):
+        """Test deleting nonexistent identity."""
+        store = WNSIdentityStore(base_path=tmp_path)
+        result = store.delete_identity("nonexistent")
+        assert result is False
+
+    def test_empty_list(self, tmp_path):
+        """Test listing identities from empty store."""
+        store = WNSIdentityStore(base_path=tmp_path)
+        identities = store.list_identities()
+        assert identities == []
+
+
+class TestNameClaimAdditional:
+    """Additional tests for NameClaim."""
+
+    def test_to_dict(self):
+        """Test claim to_dict method."""
+        identity = WNSIdentity.generate()
+        claim = NameClaim.create(identity, "myname")
+        d = claim.to_dict()
+
+        assert "name" in d
+        assert "address" in d
+        assert d["name"] == "myname"
+
+    def test_from_dict(self):
+        """Test claim from_dict method."""
+        identity = WNSIdentity.generate()
+        claim = NameClaim.create(identity, "myname")
+        d = claim.to_dict()
+
+        restored = NameClaim.from_dict(d)
+        assert restored.name == "myname"
+        assert restored.address == identity.address
+
+    def test_time_remaining(self):
+        """Test time_remaining method."""
+        identity = WNSIdentity.generate()
+        claim = NameClaim.create(identity, "myname", ttl_seconds=3600)
+
+        remaining = claim.time_remaining()
+        assert remaining > 3599  # Should be close to 3600
+
+
+class TestGlobalNamesAdditional:
+    """Additional tests for global names."""
+
+    def test_name_with_numbers(self):
+        """Test global name with numbers."""
+        assert is_valid_global_name("test123") is True
+        assert is_valid_global_name("123test") is True
+
+    def test_name_with_underscore(self):
+        """Test global name with underscore."""
+        assert is_valid_global_name("my_server") is True
+
+    def test_name_single_char(self):
+        """Test single character name."""
+        assert is_valid_global_name("a") is True
+
+    def test_reserved_names(self):
+        """Test reserved names are rejected."""
+        reserved = ["wns", "admin", "system", "root", "localhost"]
+        for name in reserved:
+            assert is_valid_global_name(name) is False
+
+    def test_name_claim_store_overwrite(self, tmp_path):
+        """Test overwriting a claim."""
+        store = NameClaimStore(base_path=tmp_path)
+        identity1 = WNSIdentity.generate()
+        identity2 = WNSIdentity.generate()
+
+        claim1 = NameClaim.create(identity1, "myname")
+        claim2 = NameClaim.create(identity2, "myname")
+
+        store.save_claim(claim1)
+        store.save_claim(claim2)
+
+        loaded = store.load_claim("myname")
+        assert loaded.address == identity2.address

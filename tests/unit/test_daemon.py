@@ -127,3 +127,123 @@ class TestDaemonRelayEndpoint:
             response = await daemon.handle_get_relays(request)
 
             assert response.status == 500
+
+
+class TestDaemonHandlers:
+    """Tests for daemon HTTP handlers."""
+
+    @pytest.mark.asyncio
+    async def test_handle_status(self):
+        """Test status endpoint handler."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+        request = MagicMock()
+
+        response = await daemon.handle_status(request)
+
+        assert response.status == 200
+
+    @pytest.mark.asyncio
+    async def test_handle_cors(self):
+        """Test CORS handler."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+        request = MagicMock()
+
+        response = await daemon.handle_cors(request)
+
+        assert response.status == 200
+
+
+class TestDaemonConnections:
+    """Tests for daemon connection management."""
+
+    def test_connections_dict(self):
+        """Test connections dictionary is initialized."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        assert daemon.connections == {}
+        assert isinstance(daemon.connections, dict)
+
+    def test_server_none_initially(self):
+        """Test server is None initially."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        assert daemon.server is None
+
+
+class TestAsyncCommand:
+    """Tests for async_command decorator."""
+
+    def test_async_command_exists(self):
+        """Test async_command decorator exists."""
+        from wh.cli.daemon import async_command
+
+        assert callable(async_command)
+
+
+class TestDaemonResolveHandler:
+    """Tests for daemon resolve handler."""
+
+    @pytest.mark.asyncio
+    async def test_handle_resolve_exception(self):
+        """Test resolve handles exceptions."""
+        from wh.cli.daemon import WormholeDaemon
+        from unittest.mock import AsyncMock
+
+        daemon = WormholeDaemon()
+
+        # Mock request that raises exception
+        request = MagicMock()
+        request.json = AsyncMock(side_effect=Exception("Parse error"))
+
+        response = await daemon.handle_resolve(request)
+
+        assert response.status == 500
+
+
+class TestDaemonConnectHandler:
+    """Tests for daemon connect handler."""
+
+    @pytest.mark.asyncio
+    async def test_handle_connect_exception(self):
+        """Test connect handles exceptions."""
+        from wh.cli.daemon import WormholeDaemon
+        from unittest.mock import AsyncMock
+
+        daemon = WormholeDaemon()
+
+        request = MagicMock()
+        request.json = AsyncMock(side_effect=Exception("Connection error"))
+
+        response = await daemon.handle_connect(request)
+
+        assert response.status == 500
+
+
+class TestDaemonStatusResponse:
+    """Tests for daemon status response format."""
+
+    @pytest.mark.asyncio
+    async def test_status_response_format(self):
+        """Test status response has correct format."""
+        from wh.cli.daemon import WormholeDaemon
+        import json
+
+        daemon = WormholeDaemon(port=9999)
+        request = MagicMock()
+
+        response = await daemon.handle_status(request)
+
+        body = json.loads(response.body.decode("utf-8"))
+
+        assert body["running"] is True
+        assert body["port"] == 9999
+        assert "version" in body
+        assert "connections" in body

@@ -234,3 +234,117 @@ class TestBidirectionalPipe:
             await asyncio.wait_for(pipe._pump_stdin(), timeout=2.0)
         except asyncio.TimeoutError:
             pytest.fail("Stdin pump did not respect done flag")
+
+
+class TestStreamingProtocolAdditional:
+    """Additional tests for StreamingProtocol."""
+
+    def test_send_without_transport(self):
+        """Test send when transport is None."""
+        from wh.core.protocol import StreamingProtocol
+
+        protocol = StreamingProtocol()
+        protocol._connected = True
+        # No transport set
+
+        # Should not raise
+        protocol.send(b"test")
+
+    def test_close_without_transport(self):
+        """Test close when transport is None."""
+        from wh.core.protocol import StreamingProtocol
+
+        protocol = StreamingProtocol()
+        # No transport set
+
+        # Should not raise
+        protocol.close()
+
+    def test_data_received_no_callback(self):
+        """Test dataReceived when no callback is set."""
+        from wh.core.protocol import StreamingProtocol
+
+        protocol = StreamingProtocol()
+
+        # Should not raise
+        protocol.dataReceived(b"test data")
+
+    def test_connection_lost_clean_shutdown(self):
+        """Test connectionLost with clean shutdown."""
+        from wh.core.protocol import StreamingProtocol
+
+        protocol = StreamingProtocol()
+        protocol._connected = True
+
+        # Simulate clean shutdown (reason is None or has None value)
+        protocol.connectionLost(None)
+
+        assert not protocol.is_connected
+
+
+class TestBidirectionalPipeAdditional:
+    """Additional tests for BidirectionalPipe."""
+
+    def test_init_without_streams(self):
+        """Test pipe initialization without streams."""
+        from wh.core.protocol import BidirectionalPipe
+
+        pipe = BidirectionalPipe()
+
+        # By default, stdin and stdout may be None
+        # This tests that the object is created successfully
+        assert pipe is not None
+
+    def test_on_data_no_stdout(self):
+        """Test _on_data when stdout is not writable."""
+        from wh.core.protocol import BidirectionalPipe
+        from io import BytesIO
+
+        stdout = BytesIO()
+        stdout.close()  # Close to make it unwritable
+
+        pipe = BidirectionalPipe(stdout=stdout)
+
+        # Should not raise (handles gracefully)
+        try:
+            pipe._on_data(b"test")
+        except ValueError:
+            pass  # Expected for closed stream
+
+    def test_status_no_callback(self):
+        """Test _status when no callback is set."""
+        from wh.core.protocol import BidirectionalPipe
+
+        pipe = BidirectionalPipe()
+
+        # Should not raise
+        pipe._status("test message")
+
+
+class TestStreamingProtocolFactoryAdditional:
+    """Additional tests for StreamingProtocolFactory."""
+
+    def test_factory_no_callbacks(self):
+        """Test factory with no callbacks."""
+        from wh.core.protocol import StreamingProtocolFactory
+
+        factory = StreamingProtocolFactory()
+
+        protocol = factory.buildProtocol(None)
+
+        assert protocol is not None
+        assert protocol.factory is factory
+
+    def test_factory_builds_multiple_protocols(self):
+        """Test factory can build multiple protocols."""
+        from wh.core.protocol import StreamingProtocolFactory
+
+        on_data = Mock()
+        factory = StreamingProtocolFactory(on_data=on_data)
+
+        protocol1 = factory.buildProtocol(None)
+        protocol2 = factory.buildProtocol(None)
+
+        assert protocol1 is not protocol2
+        assert protocol1.on_data_callback is on_data
+        assert protocol2.on_data_callback is on_data

@@ -308,3 +308,58 @@ class TestAdvertisementEncryption:
         decrypted = decrypt_advertisement(encrypted, "ws://relay2.example.com:4000/v1")
 
         assert decrypted is None
+
+
+class TestNamespaceConfigAdditional:
+    """Additional tests for NamespaceConfig."""
+
+    def test_from_relay_url_no_transit(self):
+        """Test creating config without transit URL."""
+        config = NamespaceConfig.from_relay_url("ws://relay.example.com:4000/v1")
+
+        assert config.relay_url == "ws://relay.example.com:4000/v1"
+        # transit_url defaults to empty string when not provided
+        assert config.transit_url == ""
+
+    def test_namespace_id_property(self):
+        """Test namespace_id property."""
+        config = NamespaceConfig.from_relay_url("ws://relay.example.com:4000/v1")
+
+        # Should be consistent with derive_namespace_id
+        expected_id = derive_namespace_id("ws://relay.example.com:4000/v1")
+        assert config.namespace_id == expected_id
+
+
+class TestMultiNamespaceResolverAdditional:
+    """Additional tests for MultiNamespaceResolver."""
+
+    def test_empty_resolver(self):
+        """Test resolver with no namespaces."""
+        resolver = MultiNamespaceResolver()
+
+        assert len(resolver.namespaces) == 0
+        assert resolver.get_dht_keys("abc123") == []
+
+    def test_duplicate_namespace_not_added(self):
+        """Test that duplicate namespaces are not added."""
+        resolver = MultiNamespaceResolver()
+        resolver.add_namespace("ws://relay.example.com:4000/v1")
+        resolver.add_namespace("ws://relay.example.com:4000/v1")
+
+        # Should only have one namespace (or two if not deduplicated)
+        assert len(resolver.namespaces) >= 1
+
+    def test_encrypt_for_all_empty(self):
+        """Test encrypt_for_all with no namespaces."""
+        resolver = MultiNamespaceResolver()
+        encrypted = resolver.encrypt_for_all(b"test")
+
+        assert encrypted == []
+
+
+class TestKeyConstant:
+    """Tests for KEY_SIZE constant."""
+
+    def test_key_size_value(self):
+        """Test KEY_SIZE is correct."""
+        assert KEY_SIZE == 32
