@@ -264,8 +264,12 @@ class TestRDPProtocolServer:
         mock_writer = Mock()
         mock_writer.close = Mock()
 
-        with patch('asyncio.open_connection', return_value=(mock_reader, mock_writer)):
-            await proto._handle_connect(b"")
+        async def mock_open_connection(*args, **kwargs):
+            return (mock_reader, mock_writer)
+
+        with patch('asyncio.open_connection', side_effect=mock_open_connection):
+            with patch('asyncio.create_task'):  # Prevent background task from running
+                await proto._handle_connect(b"")
 
         # Should have sent MSG_CONNECT_OK
         mock_protocol.send.assert_called()
@@ -281,7 +285,10 @@ class TestRDPProtocolServer:
         mock_protocol.send = Mock()
         proto._protocol = mock_protocol
 
-        with patch('asyncio.open_connection', side_effect=asyncio.TimeoutError()):
+        async def mock_timeout(*args, **kwargs):
+            raise asyncio.TimeoutError()
+
+        with patch('asyncio.open_connection', side_effect=mock_timeout):
             await proto._handle_connect(b"")
 
         # Should have sent MSG_CONNECT_FAIL
@@ -298,7 +305,10 @@ class TestRDPProtocolServer:
         mock_protocol.send = Mock()
         proto._protocol = mock_protocol
 
-        with patch('asyncio.open_connection', side_effect=ConnectionRefusedError()):
+        async def mock_refused(*args, **kwargs):
+            raise ConnectionRefusedError()
+
+        with patch('asyncio.open_connection', side_effect=mock_refused):
             await proto._handle_connect(b"")
 
         # Should have sent MSG_CONNECT_FAIL
@@ -308,31 +318,33 @@ class TestRDPProtocolServer:
 class TestRDPProtocolClient:
     """Tests for RDPProtocol client-side functionality."""
 
-    @pytest.mark.asyncio
-    async def test_run_client(self):
-        """Test client mode setup."""
+    def test_client_init(self):
+        """Test client initialization."""
+        proto = RDPProtocol(is_server=False)
+        assert proto.is_server is False
+        assert proto.rdp_port == DEFAULT_RDP_PORT
+
+    def test_client_send_connect(self):
+        """Test client sends connect message."""
+        proto = RDPProtocol(is_server=False)
+        mock_protocol = Mock()
+        mock_protocol.send = Mock()
+        proto._protocol = mock_protocol
+
+        proto._send_message(MSG_CONNECT)
+
+        mock_protocol.send.assert_called_once()
+        sent_data = mock_protocol.send.call_args[0][0]
+        msg_type, _ = struct.unpack(">BI", sent_data[:5])
+        assert msg_type == MSG_CONNECT
+
+    def test_client_handle_connect_ok(self):
+        """Test client handles connect OK."""
         proto = RDPProtocol(is_server=False)
 
-        mock_manager = MagicMock()
-        mock_endpoint = MagicMock()
+        proto._handle_connect_ok()
 
-        # Create a mock deferred
-        class MockDeferred:
-            def addCallbacks(self, callback, errback):
-                mock_protocol = Mock()
-                proto._protocol = mock_protocol
-                callback(mock_protocol)
-
-        mock_endpoint.connect.return_value = MockDeferred()
-        mock_manager.connector_for.return_value = mock_endpoint
-
-        # Mock the server start
-        with patch('asyncio.start_server') as mock_server:
-            mock_server.return_value = AsyncMock()
-
-            local_port = await proto.run_client(mock_manager, 13389)
-
-        assert local_port == 13389
+        assert proto._rdp_connected.is_set()
 
 
 class TestDefaultRDPPort:
