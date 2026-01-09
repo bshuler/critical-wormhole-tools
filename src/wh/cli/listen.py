@@ -29,6 +29,11 @@ from wh.core.wormhole_manager import WormholeManager
     help='Run HTTP proxy on wormhole'
 )
 @click.option(
+    '--serve',
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
+    help='Serve files from directory (browser extension compatible)'
+)
+@click.option(
     '--code',
     help='Use specific code instead of generating one'
 )
@@ -39,6 +44,7 @@ async def listen(
     port: Optional[int],
     ssh: bool,
     http: bool,
+    serve: Optional[str],
     code: Optional[str],
 ) -> None:
     """
@@ -97,27 +103,34 @@ async def listen(
         click.echo(f"Listening on code: {code}", err=True)
         click.echo("Press Ctrl+C to stop", err=True)
 
-        await manager.dilate()
+        if serve:
+            # File server mode (browser extension compatible)
+            # Does NOT use dilation - uses simple message passing
+            from wh.http.server import HTTPFileServer
+            server = HTTPFileServer(manager, serve)
+            await server.run()
+        elif ssh or http or port:
+            # These modes use dilation
+            await manager.dilate()
 
-        if ssh:
-            # SSH server mode
-            from wh.ssh.server import SSHServerHandler
-            handler = SSHServerHandler(manager)
-            await handler.run()
-        elif http:
-            # HTTP proxy mode
-            from wh.http.client import HTTPProxyHandler
-            handler = HTTPProxyHandler(manager)
-            await handler.run()
-        elif port:
-            # Port forwarding mode
-            from wh.core.forwarder import PortForwarder
-            forwarder = PortForwarder(manager, local_port=port)
-            await forwarder.run()
+            if ssh:
+                # SSH server mode
+                from wh.ssh.server import SSHServerHandler
+                handler = SSHServerHandler(manager)
+                await handler.run()
+            elif http:
+                # HTTP proxy mode
+                from wh.http.client import HTTPProxyHandler
+                handler = HTTPProxyHandler(manager)
+                await handler.run()
+            elif port:
+                # Port forwarding mode
+                from wh.core.forwarder import PortForwarder
+                forwarder = PortForwarder(manager, local_port=port)
+                await forwarder.run()
         else:
             # Generic mode - just accept connections
             click.echo("Waiting for connections...", err=True)
-            # For now, just keep running
             import asyncio
             await asyncio.Event().wait()
 
