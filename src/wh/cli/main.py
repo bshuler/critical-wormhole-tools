@@ -182,6 +182,14 @@ from wh.cli.rsync import rsync  # noqa: E402
 from wh.cli.serve import serve  # noqa: E402
 from wh.cli.daemon import daemon  # noqa: E402
 from wh.cli.relay import relay  # noqa: E402
+from wh.cli.telnet import telnet  # noqa: E402
+from wh.cli.ftp import ftp  # noqa: E402
+from wh.cli.nmap import nmap  # noqa: E402
+from wh.cli.traceroute import traceroute  # noqa: E402
+from wh.cli.dns import dns  # noqa: E402
+from wh.cli.mount import mount  # noqa: E402
+from wh.cli.vnc import vnc  # noqa: E402
+from wh.cli.rdp import rdp  # noqa: E402
 from wh.wns.cli import identity, alias  # noqa: E402
 
 cli.add_command(nc)
@@ -198,6 +206,14 @@ cli.add_command(rsync)
 cli.add_command(serve)
 cli.add_command(daemon)
 cli.add_command(relay)
+cli.add_command(telnet)
+cli.add_command(ftp)
+cli.add_command(nmap)
+cli.add_command(traceroute)
+cli.add_command(dns)
+cli.add_command(mount)
+cli.add_command(vnc)
+cli.add_command(rdp)
 cli.add_command(identity)
 cli.add_command(alias)
 
