@@ -104,8 +104,27 @@ choco install critical-wormhole-tools
 
 ```bash
 git clone https://github.com/bshuler/critical-wormhole-tools.git
-cd cwt
+cd critical-wormhole-tools
 pip install -e ".[dev]"
+```
+
+### Using Docker
+
+```bash
+# Pull from GitHub Container Registry
+docker pull ghcr.io/bshuler/critical-wormhole-tools:latest
+
+# Run any wh command
+docker run --rm ghcr.io/bshuler/critical-wormhole-tools nc -l
+
+# Run the daemon
+docker run -d -p 9475:9475 --name wh-daemon \
+  ghcr.io/bshuler/critical-wormhole-tools daemon start
+
+# Or use docker-compose for full setup
+git clone https://github.com/bshuler/critical-wormhole-tools.git
+cd critical-wormhole-tools
+docker-compose up daemon
 ```
 
 ---
@@ -755,7 +774,8 @@ cd browser-extension && npm run lint
 ### In Progress
 
 - [ ] **Web Store Publishing**: Chrome Web Store and Firefox Add-ons
-- [ ] **Web Server Integration**: Apache/Nginx/HAProxy wormhole modules
+- [x] **Web Server Integration**: Caddy plugin + Nginx/Apache/HAProxy/Traefik/Squid configs ([see integrations/](integrations/))
+- [x] **Docker Support**: Containerized deployment ([Dockerfile](Dockerfile), [docker-compose.yml](docker-compose.yml))
 - [ ] **Mobile Apps**: iOS and Android clients
 
 See [ROADMAP.md](ROADMAP.md) for detailed plans.
