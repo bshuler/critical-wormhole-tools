@@ -1,0 +1,69 @@
+# Example Caddyfile with Wormhole Integration
+# ===========================================
+#
+# This demonstrates how to use the wormhole module with Caddy.
+# Build a custom Caddy with: xcaddy build --with github.com/bshuler/wormhole-tools/integrations/caddy
+
+# Basic wormhole site with file serving
+mysite.wh {
+    wormhole {
+        identity ~/.wh/identity/mysite/private.key
+        name mysite
+    }
+
+    root * /var/www/mysite
+    file_server
+}
+
+# API server over wormhole
+api.wh {
+    wormhole {
+        name api
+    }
+
+    reverse_proxy localhost:3000
+}
+
+# Static assets with browse enabled
+static.wh {
+    wormhole {
+        name static
+    }
+
+    root * /var/www/static
+    file_server browse
+}
+
+# Using custom relay servers
+private-site.wh {
+    wormhole {
+        identity ~/.wh/identity/private/private.key
+        relay wss://my-relay.example.com/v1
+        transit tcp:my-relay.example.com:4001
+    }
+
+    root * /var/www/private
+    file_server
+}
+
+# Wormhole + regular HTTP on same server
+# (For dual-mode sites accessible via both HTTP and wormhole)
+{
+    # Global options
+}
+
+:8080 {
+    # Regular HTTP access
+    root * /var/www/site
+    file_server
+}
+
+site.wh {
+    # Same content over wormhole
+    wormhole {
+        name site
+    }
+
+    root * /var/www/site
+    file_server
+}

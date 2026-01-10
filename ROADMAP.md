@@ -27,18 +27,18 @@
 | `wh proxy` | SOCKS5 proxy | ✅ Complete | Full SOCKS5 proxy through wormhole |
 | `wh tunnel` | `ssh -L/-R` | ✅ Complete | Local port forwarding (SSH-style) |
 
-### Future Network Tools (Lower Priority)
+### Additional Network Tools (Lower Priority) ✅ COMPLETE
 
-| Tool | Traditional Equivalent | Priority | Description |
-|------|----------------------|----------|-------------|
-| `wh telnet` | `telnet` | Medium | Raw TCP connection (for debugging) |
-| `wh ftp` | `ftp` | Medium | FTP client through wormhole |
-| `wh nmap` | `nmap` | Medium | Port scanning through wormhole proxy |
-| `wh traceroute` | `traceroute` | Medium | Hop-by-hop latency analysis |
-| `wh dns` | `dig` / `nslookup` | Medium | DNS queries through wormhole |
-| `wh mount` | `sshfs` / NFS | Low | Mount remote filesystem via wormhole |
-| `wh vnc` | VNC client | Low | VNC desktop sharing through wormhole |
-| `wh rdp` | RDP client | Low | Windows Remote Desktop through wormhole |
+| Tool | Traditional Equivalent | Status | Description |
+|------|----------------------|--------|-------------|
+| `wh telnet` | `telnet` | ✅ Complete | Raw TCP connection (for debugging) |
+| `wh ftp` | `ftp` | ✅ Complete | FTP client through wormhole |
+| `wh nmap` | `nmap` | ✅ Complete | Port scanning through wormhole proxy |
+| `wh traceroute` | `traceroute` | ✅ Complete | Hop-by-hop latency analysis |
+| `wh dns` | `dig` / `nslookup` | ✅ Complete | DNS queries through wormhole |
+| `wh mount` | `sshfs` / NFS | ✅ Complete | Mount remote filesystem via wormhole |
+| `wh vnc` | VNC client | ✅ Complete | VNC desktop sharing through wormhole |
+| `wh rdp` | RDP client | ✅ Complete | Windows Remote Desktop through wormhole |
 
 ### Usage Examples
 
@@ -303,11 +303,24 @@ wh daemon status
 
 ---
 
-## Phase 5: Web Server Integration (v0.5.0)
+## Phase 5: Web Server Integration (v0.5.0) 🚧 IN PROGRESS
 
 ### Overview
 
 Enable popular web servers to serve content over wormhole addresses natively.
+
+### Current Status
+
+| Integration | Type | Status | Description |
+|-------------|------|--------|-------------|
+| Caddy | Go Plugin | 🚧 Scaffold | Native module with Caddyfile support |
+| Nginx | Reverse Proxy | ✅ Docs | Configuration examples |
+| Apache | Reverse Proxy | ✅ Docs | mod_proxy configuration |
+| HAProxy | Config | ✅ Docs | Load balancing configuration |
+| Traefik | Config | ✅ Docs | Docker/Kubernetes examples |
+| Squid | Config | ✅ Docs | Caching proxy configuration |
+
+See `integrations/` directory for detailed documentation and examples.
 
 ### Apache Module (`mod_wormhole`)
 
@@ -467,14 +480,14 @@ wh --namespace=engineering ssh team-server
 
 ## Timeline
 
-| Phase | Version | Target | Status |
-|-------|---------|--------|--------|
-| Core Tools | v0.1.0 | Q1 2024 | ✅ Complete |
-| Additional Network Tools | v0.2.0 | Q2 2024 | ✅ Complete |
-| Wormhole Name Service | v0.3.0 | Q3 2024 | ✅ Complete |
-| Browser Extension | v0.4.0 | Q4 2024 | 🚧 In Progress |
-| Web Server Integration | v0.5.0 | Q1 2025 | 📋 Design |
-| Enterprise Features | v1.0.0 | Q2 2025 | 📋 Design |
+| Phase | Version | Status |
+|-------|---------|--------|
+| Core Tools | v0.1.0 | ✅ Complete |
+| Additional Network Tools | v0.2.0 | ✅ Complete |
+| Wormhole Name Service | v0.3.0 | ✅ Complete |
+| Browser Extension | v0.4.0 | ✅ Complete (pending store publish) |
+| Web Server Integration | v0.5.0 | 🚧 In Progress |
+| Enterprise Features | v1.0.0 | 📋 Design |
 
 ---
 
