@@ -1,4 +1,4 @@
-.PHONY: all init plan apply build sync invalidate deploy destroy cleanup-cli serve serve-test integration-test help
+.PHONY: all init plan apply build sync invalidate deploy destroy cleanup-cli serve serve-test integration-test test test-headed test-headless help
 
 # Configuration
 AWS_PROFILE ?= criticalwormholebrowser-prod
@@ -31,10 +31,15 @@ help:
 	@echo "  make invalidate  - Invalidate CloudFront cache"
 	@echo "  make deploy      - Full deployment (infra + build + sync + invalidate)"
 	@echo ""
-	@echo "Local Testing:"
+	@echo "Local Development:"
 	@echo "  make serve            - Serve discovery site over wormhole"
 	@echo "  make serve-test       - Serve test fixtures over wormhole"
-	@echo "  make integration-test - Run integration tests against live discovery site"
+	@echo ""
+	@echo "Testing:"
+	@echo "  make test             - Run full browser integration tests (headed via xvfb)"
+	@echo "  make test-headed      - Run tests in headed mode (requires display or xvfb)"
+	@echo "  make test-headless    - Run tests in headless mode"
+	@echo "  make integration-test - Run pytest integration tests"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make cleanup-cli - Remove CLI-created AWS resources"
@@ -95,10 +100,26 @@ serve-test:
 	@echo ""
 	wh listen --serve $(TEST_FIXTURES)
 
-# Run integration tests
+# Run integration tests (old location)
 integration-test:
 	@echo "Running integration tests..."
 	cd .. && python -m pytest tests/integration/test_discovery_site.py -v
+
+# Full browser integration tests (headed via xvfb)
+test:
+	@echo "Running full browser integration tests..."
+	@echo "Using headed mode via xvfb for better WebRTC/WebSocket support"
+	xvfb-run -a python -m pytest tests/test_full_integration.py -v -s --tb=short
+
+# Run tests in headed mode (requires display or xvfb wrapper)
+test-headed:
+	@echo "Running tests in headed mode..."
+	HEADLESS=0 python -m pytest tests/test_full_integration.py -v -s --tb=short
+
+# Run tests in headless mode
+test-headless:
+	@echo "Running tests in headless mode..."
+	HEADLESS=1 python -m pytest tests/test_full_integration.py -v -s --tb=short
 
 # Destroy infrastructure
 destroy:

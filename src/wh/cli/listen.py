@@ -34,6 +34,11 @@ from wh.core.wormhole_manager import WormholeManager
     help='Serve files from directory (browser extension compatible)'
 )
 @click.option(
+    '--dilate/--no-dilate',
+    default=True,
+    help='Enable dilation for faster streaming (default: enabled)'
+)
+@click.option(
     '--code',
     help='Use specific code instead of generating one'
 )
@@ -45,6 +50,7 @@ async def listen(
     ssh: bool,
     http: bool,
     serve: Optional[str],
+    dilate: bool,
     code: Optional[str],
 ) -> None:
     """
@@ -105,8 +111,17 @@ async def listen(
 
         if serve:
             # File server mode (browser extension compatible)
-            # Does NOT use dilation - uses simple message passing
             from wh.http.server import HTTPFileServer
+
+            if dilate:
+                # Dilation mode - use WebRTC for faster streaming
+                try:
+                    status("Waiting for dilation...")
+                    await manager.dilate()
+                    status("Dilation established")
+                except Exception as e:
+                    status(f"Dilation failed: {e}, falling back to message passing")
+
             server = HTTPFileServer(manager, serve)
             await server.run()
         elif ssh or http or port:
