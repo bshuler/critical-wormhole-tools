@@ -692,42 +692,52 @@ See [browser-extension/README.md](browser-extension/README.md) for full details.
 ```bash
 git clone https://github.com/bshuler/critical-wormhole-tools.git
 cd critical-wormhole-tools
+
+# Install with dev dependencies (using Makefile)
+make install-dev
+
+# Or manually:
 pip install -e ".[dev]"
+```
+
+### Using the Makefile
+
+We provide a Makefile for common development tasks:
+
+```bash
+make help             # Show all available commands
+make test             # Run all Python tests
+make test-coverage    # Run tests with coverage report
+make lint             # Run linting checks
+make extension-test   # Run browser extension tests
+make build            # Build Python package
+make docker-build     # Build Docker image
 ```
 
 ### Run Tests
 
 The project has comprehensive test coverage across Python and JavaScript:
 
-**Python Tests (419 unit tests + integration tests):**
+**Python Tests (745 tests):**
 
 ```bash
 # All tests
-pytest
-
-# Unit tests only (fast, ~0.5s)
-pytest tests/unit
-
-# Integration tests (requires network)
-pytest tests/integration
+make test
+# or: pytest
 
 # With coverage
-pytest --cov=wh --cov-report=html
+make test-coverage
+# or: pytest --cov=wh --cov-report=html
 ```
 
 **Browser Extension Tests (552 tests):**
 
 ```bash
-cd browser-extension
-
-# Unit and functional tests
-npm test
+make extension-test
+# or: cd browser-extension && npm test
 
 # E2E browser tests (Playwright)
-npm run test:e2e
-
-# All tests with coverage
-npm run test:coverage
+cd browser-extension && npm run test:e2e
 ```
 
 ### Test Coverage
