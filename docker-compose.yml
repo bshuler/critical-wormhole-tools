@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Wormhole daemon for browser extension and API access
+  daemon:
+    build: .
+    image: wormhole-tools:latest
+    container_name: wh-daemon
+    command: daemon start --port 9475
+    ports:
+      - "9475:9475"
+    volumes:
+      - wh-data:/home/wormhole/.wh
+    environment:
+      - WH_RELAY=${WH_RELAY:-wss://relay.magic-wormhole.io/v1}
+      - WH_TRANSIT=${WH_TRANSIT:-tcp:transit.magic-wormhole.io:4001}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wh", "daemon", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Wormhole relay server (optional - for self-hosted relay)
+  relay:
+    build: .
+    image: wormhole-tools:latest
+    container_name: wh-relay
+    command: relay serve --port 4000 --transit-port 4001
+    ports:
+      - "4000:4000"   # Mailbox relay (WebSocket)
+      - "4001:4001"   # Transit relay (TCP)
+    environment:
+      - WH_RELAY_HOST=0.0.0.0
+    restart: unless-stopped
+    profiles:
+      - relay  # Only start with: docker-compose --profile relay up
+
+  # SSH server over wormhole
+  ssh-server:
+    build: .
+    image: wormhole-tools:latest
+    container_name: wh-ssh
+    command: serve --ssh
+    volumes:
+      - wh-data:/home/wormhole/.wh
+      - ssh-keys:/home/wormhole/.ssh:ro
+    environment:
+      - WH_RELAY=${WH_RELAY:-wss://relay.magic-wormhole.io/v1}
+    restart: unless-stopped
+    profiles:
+      - ssh  # Only start with: docker-compose --profile ssh up
+
+  # HTTP file server over wormhole
+  file-server:
+    build: .
+    image: wormhole-tools:latest
+    container_name: wh-files
+    command: listen --serve /data
+    volumes:
+      - wh-data:/home/wormhole/.wh
+      - ${FILE_SERVER_PATH:-./data}:/data:ro
+    environment:
+      - WH_RELAY=${WH_RELAY:-wss://relay.magic-wormhole.io/v1}
+    restart: unless-stopped
+    profiles:
+      - files  # Only start with: docker-compose --profile files up
+
+volumes:
+  wh-data:
+    name: wormhole-data
+  ssh-keys:
+    name: wormhole-ssh-keys
+
+networks:
+  default:
+    name: wormhole-network
