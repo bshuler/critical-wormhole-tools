@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wormhole Discovery</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --bg: #0f172a;
+      --bg-light: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --success: #22c55e;
+      --error: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .connect-form {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .connect-form input {
+      flex: 1;
+      padding: 1rem 1.25rem;
+      font-size: 1.125rem;
+      border: 2px solid var(--border);
+      border-radius: 0.75rem;
+      background: var(--bg-light);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .connect-form input:focus {
+      border-color: var(--primary);
+    }
+
+    .connect-form input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .connect-form button {
+      padding: 1rem 2rem;
+      font-size: 1.125rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 0.75rem;
+      background: var(--primary);
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .connect-form button:hover {
+      background: var(--primary-dark);
+    }
+
+    .connect-form button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      display: none;
+    }
+
+    .status.connecting {
+      display: block;
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .status.error {
+      display: block;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error);
+      color: var(--error);
+    }
+
+    .recent {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .recent h3 {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .recent-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: var(--bg-light);
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .recent-item:hover {
+      background: var(--border);
+    }
+
+    .recent-item .address {
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 0.9375rem;
+    }
+
+    .recent-item .arrow {
+      color: var(--text-muted);
+    }
+
+    .connections {
+      max-width: 600px;
+      margin: 2rem auto 0;
+    }
+
+    .connections h3 {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .connection-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: var(--bg-light);
+      border-radius: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .connection-item .info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .connection-item .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    .connection-item .address {
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 0.9375rem;
+    }
+
+    .connection-item button {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .connection-item button:hover {
+      border-color: var(--error);
+      color: var(--error);
+    }
+
+    .how-it-works {
+      max-width: 600px;
+      margin: 3rem auto 0;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .how-it-works h3 {
+      font-size: 1.125rem;
+      margin-bottom: 1rem;
+    }
+
+    .how-it-works p {
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+
+    .how-it-works code {
+      background: var(--bg-light);
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-family: 'SF Mono', Monaco, Consolas, monospace;
+      font-size: 0.875rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+      .hero h1 {
+        font-size: 2rem;
+      }
+
+      .connect-form {
+        flex-direction: column;
+      }
+
+      .connect-form button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>Wormhole Discovery</h1>
+      <p>Browse wormhole websites directly in your browser. No extension or daemon required.</p>
+    </div>
+
+    <form class="connect-form" id="connect-form">
+      <input
+        type="text"
+        id="address-input"
+        placeholder="Enter address (e.g., 7-guitar-sunset or mysite.wns)"
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <button type="submit" id="connect-btn">Connect</button>
+    </form>
+
+    <div class="status" id="status"></div>
+
+    <div class="connections" id="connections-section" style="display: none;">
+      <h3>Active Connections</h3>
+      <div class="connection-list" id="connection-list"></div>
+    </div>
+
+    <div class="recent" id="recent-section" style="display: none;">
+      <h3>Recent</h3>
+      <div class="recent-list" id="recent-list"></div>
+    </div>
+
+    <div class="how-it-works">
+      <h3>How it works</h3>
+      <p>
+        Enter a wormhole code like <code>7-guitar-sunset</code> or a WNS address like <code>mysite.wns</code>.
+        The site connects directly to the wormhole relay using WebSocket and WebRTC - everything runs in your browser.
+      </p>
+      <p>
+        Once connected, you can browse the remote site just like a normal website.
+        Navigation, forms, and resources are all proxied through the encrypted wormhole connection.
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    Powered by <a href="https://github.com/bshuler/critical-wormhole-tools" target="_blank">Critical Wormhole Tools</a>
+  </footer>
+
+  <script type="module">
+    import {
+      parseWormholeUrl,
+      ensureConnection,
+      onStateChange,
+      getActiveConnections,
+      disconnectAddress,
+      getRecentAddresses,
+      addRecentAddress,
+      generateConnectionId,
+      registerConnection
+    } from './app.js';
+
+    const form = document.getElementById('connect-form');
+    const input = document.getElementById('address-input');
+    const button = document.getElementById('connect-btn');
+    const statusEl = document.getElementById('status');
+    const connectionsSection = document.getElementById('connections-section');
+    const connectionList = document.getElementById('connection-list');
+    const recentSection = document.getElementById('recent-section');
+    const recentList = document.getElementById('recent-list');
+
+    // Load recent addresses
+    async function loadRecent() {
+      const recent = await getRecentAddresses();
+      if (recent.length > 0) {
+        recentSection.style.display = 'block';
+        recentList.innerHTML = recent.map(addr => `
+          <div class="recent-item" data-address="${addr}">
+            <span class="address">${addr}</span>
+            <span class="arrow">&rarr;</span>
+          </div>
+        `).join('');
+
+        // Add click handlers
+        recentList.querySelectorAll('.recent-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const addr = item.dataset.address;
+            input.value = addr;
+            form.dispatchEvent(new Event('submit'));
+          });
+        });
+      }
+    }
+
+    // Update connections display
+    function updateConnections() {
+      const connections = getActiveConnections();
+      const entries = Object.entries(connections);
+
+      if (entries.length > 0) {
+        connectionsSection.style.display = 'block';
+        connectionList.innerHTML = entries.map(([addr, info]) => `
+          <div class="connection-item" data-address="${addr}">
+            <div class="info">
+              <div class="status-dot"></div>
+              <span class="address">${addr}</span>
+            </div>
+            <button type="button" class="disconnect-btn">Disconnect</button>
+          </div>
+        `).join('');
+
+        // Add disconnect handlers
+        connectionList.querySelectorAll('.disconnect-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const item = btn.closest('.connection-item');
+            const addr = item.dataset.address;
+            await disconnectAddress(addr);
+          });
+        });
+
+        // Click to navigate
+        connectionList.querySelectorAll('.connection-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            const addr = item.dataset.address;
+            navigateToViewer(addr, '/');
+          });
+        });
+      } else {
+        connectionsSection.style.display = 'none';
+      }
+    }
+
+    // Navigate to viewer
+    function navigateToViewer(address, path) {
+      const connectionId = generateConnectionId();
+      registerConnection(connectionId, address);
+      window.location.href = `viewer.html?address=${encodeURIComponent(address)}&connectionId=${encodeURIComponent(connectionId)}&path=${encodeURIComponent(path)}`;
+    }
+
+    // Show status message
+    function showStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = 'status ' + type;
+    }
+
+    // Hide status
+    function hideStatus() {
+      statusEl.className = 'status';
+    }
+
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const rawInput = input.value.trim();
+      if (!rawInput) return;
+
+      const { address, path } = parseWormholeUrl(rawInput);
+
+      button.disabled = true;
+      showStatus(`Connecting to ${address}...`, 'connecting');
+
+      try {
+        await ensureConnection(address);
+        await addRecentAddress(address);
+
+        hideStatus();
+        navigateToViewer(address, path);
+      } catch (error) {
+        showStatus(`Connection failed: ${error.message}`, 'error');
+        button.disabled = false;
+      }
+    });
+
+    // Listen for state changes
+    onStateChange((address, state, count) => {
+      console.log('State change:', address, state, count);
+      updateConnections();
+    });
+
+    // Check for hash-based navigation
+    function checkHashNavigation() {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/address/')) {
+        const match = hash.match(/^#\/address\/([^\/]+)(\/.*)?$/);
+        if (match) {
+          input.value = match[1] + (match[2] || '');
+          form.dispatchEvent(new Event('submit'));
+        }
+      }
+    }
+
+    // Initialize
+    loadRecent();
+    updateConnections();
+    checkHashNavigation();
+
+    // Handle hash changes
+    window.addEventListener('hashchange', checkHashNavigation);
+  </script>
+</body>
+</html>

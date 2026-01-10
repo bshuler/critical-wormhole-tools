@@ -37,6 +37,7 @@
 | `ci.yml` | Active | Python tests on Linux/macOS/Windows, Python 3.10-3.13 |
 | `docker.yml` | Active | Docker image build, multi-arch on release |
 | `browser-extension.yml` | Active | Extension tests and artifact build |
+| `discovery-site.yml` | Active | Discovery site build and GitHub Pages deploy |
 | `publish.yml` | Active | PyPI publish on release |
 
 ---
@@ -96,11 +97,14 @@ Enable web servers to serve over wormhole:
 | Integration | Type | Status | Notes |
 |-------------|------|--------|-------|
 | Caddy | Go Plugin | Complete | Listener uses daemon API for connections |
+| Discovery Site | Static Site | Complete | Standalone wormhole browsing, GitHub Pages |
 | Nginx | Config | Docs | Reverse proxy examples |
 | Apache | Config | Docs | mod_proxy examples |
 | HAProxy | Config | Docs | Load balancing examples |
-| Traefik | Config | Docs | Docker/K8s examples |
+| Traefik | Config | Docs | Traefik config docs |
 | Squid | Config | Docs | Caching proxy examples |
+
+**Discovery Site**: A standalone static website that provides wormhole browsing without requiring an extension or daemon. Bundles the complete protocol stack in JavaScript and deploys to GitHub Pages.
 
 ### 📋 Phase 6: Enterprise Features (v1.0.0) - DESIGN
 Planned enterprise capabilities:
@@ -168,6 +172,9 @@ critical-wormhole-tools/
 ├── browser-extension/         # Chrome/Firefox extension
 │   ├── src/                   # Extension source
 │   └── tests/                 # Extension tests
+├── discovery-site/            # Standalone wormhole browser
+│   ├── src/                   # Site source (app.js, viewer.js, lib/)
+│   └── dist/                  # Built static site
 ├── integrations/              # Web server integrations
 │   ├── caddy/                 # Caddy Go plugin
 │   ├── nginx/                 # Nginx config docs
@@ -233,6 +240,33 @@ When resuming work, these files provide the most context:
 ---
 
 ## Session History (Recent)
+
+### 2026-01-10 Session (Discovery Site Implementation)
+Accomplished:
+- **Discovery Site (standalone wormhole browsing):**
+  - Created `discovery-site/` directory with complete implementation
+  - Copied `lib/` directory from browser extension (100% reusable)
+  - Copied `sandbox.html` (1,905 lines, 100% reusable)
+  - Created `package.json` with webpack, babel, vitest dependencies
+  - Created `webpack.config.js` for standalone bundle
+  - Created `app.js` core module (transformed from background.js)
+    - Removed all chrome.* API calls
+    - Uses localStorage adapter instead of chrome.storage
+    - Exports: parseWormholeUrl, resolveAddress, ensureConnection, fetchOverWormhole, openWebSocket
+  - Created `index.html` landing page with URL input, recent connections, active connections
+  - Created `viewer.js` and `viewer.html` (adapted from extension)
+  - Added GitHub Pages deployment workflow
+
+Files Created:
+- `discovery-site/package.json`
+- `discovery-site/webpack.config.js`
+- `discovery-site/src/app.js`
+- `discovery-site/src/index.html`
+- `discovery-site/src/viewer.js`
+- `discovery-site/src/viewer.html`
+- `discovery-site/src/lib/` (copied from extension)
+- `discovery-site/src/sandbox.html` (copied from extension)
+- `.github/workflows/discovery-site.yml`
 
 ### 2026-01-10 Session (BitTorrent DHT - Batteries Included)
 Accomplished:

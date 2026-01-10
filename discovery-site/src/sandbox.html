@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Wormhole Sandbox</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+    }
+    #sandbox-content {
+      width: 100%;
+      min-height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="sandbox-content"></div>
+
+  <script>
+    /**
+     * Sandbox Frame - Full-featured content renderer
+     *
+     * Features:
+     * - Inline script execution
+     * - External resource proxying (CSS, images, scripts)
+     * - Fetch/XHR interception
+     * - localStorage/sessionStorage proxy
+     * - Cookie proxy
+     * - window.location proxy
+     */
+
+    const contentEl = document.getElementById('sandbox-content');
+    let currentPath = '/';
+    let currentAddress = '';
+
+    // Pending resource requests (waiting for parent response)
+    const pendingRequests = new Map();
+    let requestId = 0;
+
+    // Per-site storage (proxied through parent)
+    const siteStorage = {
+      local: {},
+      session: {}
+    };
+
+    // Per-site cookies
+    let siteCookies = {};
+
+    /**
+     * Generate unique request ID
+     */
+    function getRequestId() {
+      return `req-${++requestId}-${Date.now()}`;
+    }
+
+    /**
+     * Request a resource from parent (via wormhole)
+     */
+    function requestResource(path, options = {}) {
+      return new Promise((resolve, reject) => {
+        const id = getRequestId();
+        const timeout = setTimeout(() => {
+          pendingRequests.delete(id);
+          reject(new Error('Resource request timeout: ' + path));
+        }, 30000);
+
+        pendingRequests.set(id, { resolve, reject, timeout });
+
+        window.parent.postMessage({
+          type: 'RESOURCE_REQUEST',
+          id: id,
+          path: path,
+          method: options.method || 'GET',
+          headers: options.headers || {},
+          body: options.body || null,
+          responseType: options.responseType || 'text'
+        }, '*');
+      });
+    }
+
+    /**
+     * Check if a URL is external
+     */
+    function isExternalUrl(url) {
+      if (!url) return false;
+      return url.startsWith('http://') ||
+             url.startsWith('https://') ||
+             url.startsWith('//') ||
+             url.startsWith('data:') ||
+             url.startsWith('blob:');
+    }
+
+    /**
+     * Check if a link is external (should not be intercepted for navigation)
+     */
+    function isExternalLink(href) {
+      if (!href) return true;
+      return href.startsWith('http://') ||
+             href.startsWith('https://') ||
+             href.startsWith('javascript:') ||
+             href.startsWith('mailto:') ||
+             href.startsWith('tel:') ||
+             href.startsWith('#') ||
+             href.startsWith('//');
+    }
+
+    /**
+     * Resolve a relative path against current path
+     */
+    function resolvePath(base, relative) {
+      if (!relative) return base;
+      if (relative.startsWith('/')) return relative;
+      if (relative.startsWith('data:') || relative.startsWith('blob:')) return relative;
+
+      const baseDir = base.endsWith('/') ? base : base.replace(/\/[^\/]*$/, '/');
+      let path = baseDir + relative;
+
+      // Normalize path (handle ../ and ./)
+      const parts = path.split('/');
+      const result = [];
+      for (const part of parts) {
+        if (part === '..') {
+          result.pop();
+        } else if (part !== '.' && part !== '') {
+          result.push(part);
+        }
+      }
+
+      return '/' + result.join('/');
+    }
+
+    /**
+     * Rewrite a single link element to use data-wh-href
+     */
+    function rewriteLink(link) {
+      const href = link.getAttribute('href');
+      if (!href || link.hasAttribute('data-wh-href')) return false;
+
+      if (!isExternalLink(href)) {
+        link.setAttribute('data-wh-href', href);
+        link.setAttribute('href', '#');
+        link.classList.add('wh-internal-link');
+        return true;
+      }
+      return false;
+    }
+
+    /**
+     * Process and load external stylesheets
+     */
+    async function loadExternalStylesheets(doc) {
+      const links = doc.querySelectorAll('link[rel="stylesheet"]');
+      const promises = [];
+
+      links.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && !isExternalUrl(href)) {
+          const resolvedPath = resolvePath(currentPath, href);
+          console.log('[Sandbox] Loading stylesheet:', resolvedPath);
+
+          const promise = requestResource(resolvedPath)
+            .then(css => {
+              // Create inline style element
+              const style = document.createElement('style');
+              style.textContent = css;
+              style.setAttribute('data-original-href', href);
+              link.parentNode.replaceChild(style, link);
+              console.log('[Sandbox] Loaded stylesheet:', resolvedPath);
+            })
+            .catch(err => {
+              console.error('[Sandbox] Failed to load stylesheet:', resolvedPath, err);
+            });
+
+          promises.push(promise);
+        }
+      });
+
+      return Promise.all(promises);
+    }
+
+    /**
+     * Process and load external scripts
+     */
+    async function loadExternalScripts(container) {
+      const scripts = container.querySelectorAll('script[src]');
+
+      for (const script of scripts) {
+        const src = script.getAttribute('src');
+        if (src && !isExternalUrl(src)) {
+          const resolvedPath = resolvePath(currentPath, src);
+          console.log('[Sandbox] Loading script:', resolvedPath);
+
+          try {
+            const code = await requestResource(resolvedPath);
+            const newScript = document.createElement('script');
+            newScript.textContent = code;
+            newScript.setAttribute('data-original-src', src);
+            if (script.type) newScript.type = script.type;
+            script.parentNode.replaceChild(newScript, script);
+            console.log('[Sandbox] Loaded script:', resolvedPath);
+          } catch (err) {
+            console.error('[Sandbox] Failed to load script:', resolvedPath, err);
+          }
+        }
+      }
+    }
+
+    /**
+     * Rewrite image sources to use blob URLs
+     */
+    async function rewriteImages(container) {
+      const images = container.querySelectorAll('img[src]');
+      const promises = [];
+
+      images.forEach(img => {
+        const src = img.getAttribute('src');
+        if (src && !isExternalUrl(src)) {
+          const resolvedPath = resolvePath(currentPath, src);
+          console.log('[Sandbox] Loading image:', resolvedPath);
+
+          // Store original for reference
+          img.setAttribute('data-original-src', src);
+
+          const promise = requestResource(resolvedPath, { responseType: 'blob' })
+            .then(blobUrl => {
+              img.src = blobUrl;
+              console.log('[Sandbox] Loaded image:', resolvedPath);
+            })
+            .catch(err => {
+              console.error('[Sandbox] Failed to load image:', resolvedPath, err);
+            });
+
+          promises.push(promise);
+        }
+      });
+
+      return Promise.all(promises);
+    }
+
+    /**
+     * Rewrite other media sources (video, audio, source)
+     */
+    async function rewriteMedia(container) {
+      const mediaElements = container.querySelectorAll('video[src], audio[src], source[src]');
+      const promises = [];
+
+      mediaElements.forEach(el => {
+        const src = el.getAttribute('src');
+        if (src && !isExternalUrl(src)) {
+          const resolvedPath = resolvePath(currentPath, src);
+          el.setAttribute('data-original-src', src);
+
+          const promise = requestResource(resolvedPath, { responseType: 'blob' })
+            .then(blobUrl => {
+              el.src = blobUrl;
+              console.log('[Sandbox] Loaded media:', resolvedPath);
+            })
+            .catch(err => {
+              console.error('[Sandbox] Failed to load media:', resolvedPath, err);
+            });
+
+          promises.push(promise);
+        }
+      });
+
+      return Promise.all(promises);
+    }
+
+    /**
+     * Rewrite CSS url() references in inline styles
+     */
+    async function rewriteCssUrls(container) {
+      const styles = container.querySelectorAll('style');
+
+      for (const style of styles) {
+        let css = style.textContent;
+        const urlMatches = css.match(/url\(['"]?([^'")]+)['"]?\)/g);
+
+        if (urlMatches) {
+          for (const match of urlMatches) {
+            const urlMatch = match.match(/url\(['"]?([^'")]+)['"]?\)/);
+            if (urlMatch && urlMatch[1] && !isExternalUrl(urlMatch[1])) {
+              const originalUrl = urlMatch[1];
+              const resolvedPath = resolvePath(currentPath, originalUrl);
+
+              try {
+                const blobUrl = await requestResource(resolvedPath, { responseType: 'blob' });
+                css = css.replace(match, `url('${blobUrl}')`);
+                console.log('[Sandbox] Rewrote CSS url:', originalUrl);
+              } catch (err) {
+                console.error('[Sandbox] Failed to load CSS resource:', resolvedPath, err);
+              }
+            }
+          }
+          style.textContent = css;
+        }
+      }
+    }
+
+    /**
+     * Rewrite background-image in inline styles
+     */
+    async function rewriteInlineStyles(container) {
+      const elements = container.querySelectorAll('[style*="url("]');
+
+      for (const el of elements) {
+        let style = el.getAttribute('style');
+        const urlMatches = style.match(/url\(['"]?([^'")]+)['"]?\)/g);
+
+        if (urlMatches) {
+          for (const match of urlMatches) {
+            const urlMatch = match.match(/url\(['"]?([^'")]+)['"]?\)/);
+            if (urlMatch && urlMatch[1] && !isExternalUrl(urlMatch[1])) {
+              const originalUrl = urlMatch[1];
+              const resolvedPath = resolvePath(currentPath, originalUrl);
+
+              try {
+                const blobUrl = await requestResource(resolvedPath, { responseType: 'blob' });
+                style = style.replace(match, `url('${blobUrl}')`);
+              } catch (err) {
+                console.error('[Sandbox] Failed to load inline style resource:', resolvedPath, err);
+              }
+            }
+          }
+          el.setAttribute('style', style);
+        }
+      }
+    }
+
+    /**
+     * Override fetch() to route through wormhole
+     */
+    const originalFetch = window.fetch;
+    window.fetch = async function(input, init = {}) {
+      let url = typeof input === 'string' ? input : input.url;
+
+      // External URLs use original fetch
+      if (isExternalUrl(url)) {
+        return originalFetch.call(window, input, init);
+      }
+
+      const resolvedPath = resolvePath(currentPath, url);
+      console.log('[Sandbox] Intercepted fetch:', resolvedPath);
+
+      try {
+        const response = await requestResource(resolvedPath, {
+          method: init.method || 'GET',
+          headers: init.headers || {},
+          body: init.body,
+          responseType: 'full' // Get full response with headers
+        });
+
+        // Create a Response object
+        return new Response(response.body, {
+          status: response.status || 200,
+          statusText: response.statusText || 'OK',
+          headers: response.headers || {}
+        });
+      } catch (err) {
+        throw new TypeError('Network request failed: ' + err.message);
+      }
+    };
+
+    /**
+     * Override XMLHttpRequest to route through wormhole
+     */
+    const OriginalXHR = window.XMLHttpRequest;
+    window.XMLHttpRequest = function() {
+      const xhr = new OriginalXHR();
+      const originalOpen = xhr.open;
+      const originalSend = xhr.send;
+      let method = 'GET';
+      let url = '';
+      let async = true;
+
+      xhr.open = function(m, u, a = true) {
+        method = m;
+        url = u;
+        async = a;
+
+        if (isExternalUrl(u)) {
+          return originalOpen.apply(xhr, arguments);
+        }
+        // For internal URLs, we'll handle in send()
+      };
+
+      xhr.send = function(body) {
+        if (isExternalUrl(url)) {
+          return originalSend.apply(xhr, arguments);
+        }
+
+        const resolvedPath = resolvePath(currentPath, url);
+        console.log('[Sandbox] Intercepted XHR:', resolvedPath);
+
+        requestResource(resolvedPath, {
+          method: method,
+          body: body,
+          responseType: 'full'
+        }).then(response => {
+          // Simulate XHR response
+          Object.defineProperty(xhr, 'status', { value: response.status || 200 });
+          Object.defineProperty(xhr, 'statusText', { value: response.statusText || 'OK' });
+          Object.defineProperty(xhr, 'responseText', { value: response.body });
+          Object.defineProperty(xhr, 'response', { value: response.body });
+          Object.defineProperty(xhr, 'readyState', { value: 4 });
+
+          if (xhr.onreadystatechange) xhr.onreadystatechange();
+          if (xhr.onload) xhr.onload();
+        }).catch(err => {
+          Object.defineProperty(xhr, 'status', { value: 0 });
+          Object.defineProperty(xhr, 'readyState', { value: 4 });
+          if (xhr.onerror) xhr.onerror(err);
+        });
+      };
+
+      return xhr;
+    };
+
+    /**
+     * WebSocket proxy - routes WebSocket connections through the wormhole
+     */
+    const pendingWebSockets = new Map();
+    let wsIdCounter = 0;
+
+    class WormholeWebSocket extends EventTarget {
+      constructor(url, protocols) {
+        super();
+
+        this._id = `ws-${++wsIdCounter}-${Date.now()}`;
+        this._url = url;
+        this._protocols = protocols;
+        this._readyState = WebSocket.CONNECTING;
+        this._bufferedAmount = 0;
+        this._extensions = '';
+        this._protocol = '';
+        this._binaryType = 'blob';
+
+        // Event handlers
+        this.onopen = null;
+        this.onmessage = null;
+        this.onerror = null;
+        this.onclose = null;
+
+        // Register this WebSocket
+        pendingWebSockets.set(this._id, this);
+
+        // Resolve URL
+        let resolvedUrl = url;
+        if (!isExternalUrl(url)) {
+          // Convert relative WebSocket URL to wormhole path
+          const wsPath = url.replace(/^ws:\/\/[^\/]+/, '').replace(/^wss:\/\/[^\/]+/, '') || '/';
+          resolvedUrl = resolvePath(currentPath, wsPath);
+        }
+
+        console.log('[Sandbox] WebSocket connecting:', this._id, resolvedUrl);
+
+        // Request WebSocket connection from parent
+        window.parent.postMessage({
+          type: 'WS_OPEN',
+          id: this._id,
+          url: resolvedUrl,
+          protocols: protocols
+        }, '*');
+      }
+
+      get url() { return this._url; }
+      get readyState() { return this._readyState; }
+      get bufferedAmount() { return this._bufferedAmount; }
+      get extensions() { return this._extensions; }
+      get protocol() { return this._protocol; }
+      get binaryType() { return this._binaryType; }
+      set binaryType(val) { this._binaryType = val; }
+
+      send(data) {
+        if (this._readyState !== WebSocket.OPEN) {
+          throw new DOMException('WebSocket is not open', 'InvalidStateError');
+        }
+
+        window.parent.postMessage({
+          type: 'WS_SEND',
+          id: this._id,
+          data: data
+        }, '*');
+      }
+
+      close(code = 1000, reason = '') {
+        if (this._readyState === WebSocket.CLOSING || this._readyState === WebSocket.CLOSED) {
+          return;
+        }
+
+        this._readyState = WebSocket.CLOSING;
+
+        window.parent.postMessage({
+          type: 'WS_CLOSE',
+          id: this._id,
+          code: code,
+          reason: reason
+        }, '*');
+      }
+
+      // Internal methods called by message handler
+      _handleOpen(protocol, extensions) {
+        this._readyState = WebSocket.OPEN;
+        this._protocol = protocol || '';
+        this._extensions = extensions || '';
+
+        const event = new Event('open');
+        this.dispatchEvent(event);
+        if (this.onopen) this.onopen(event);
+
+        console.log('[Sandbox] WebSocket opened:', this._id);
+      }
+
+      _handleMessage(data) {
+        const event = new MessageEvent('message', { data: data });
+        this.dispatchEvent(event);
+        if (this.onmessage) this.onmessage(event);
+      }
+
+      _handleError(message) {
+        const event = new Event('error');
+        this.dispatchEvent(event);
+        if (this.onerror) this.onerror(event);
+
+        console.error('[Sandbox] WebSocket error:', this._id, message);
+      }
+
+      _handleClose(code, reason, wasClean) {
+        this._readyState = WebSocket.CLOSED;
+        pendingWebSockets.delete(this._id);
+
+        const event = new CloseEvent('close', {
+          code: code || 1000,
+          reason: reason || '',
+          wasClean: wasClean !== false
+        });
+        this.dispatchEvent(event);
+        if (this.onclose) this.onclose(event);
+
+        console.log('[Sandbox] WebSocket closed:', this._id, code, reason);
+      }
+
+      // Static properties
+      static get CONNECTING() { return 0; }
+      static get OPEN() { return 1; }
+      static get CLOSING() { return 2; }
+      static get CLOSED() { return 3; }
+    }
+
+    // Replace WebSocket constructor
+    window.WebSocket = WormholeWebSocket;
+
+    /**
+     * Handle WebSocket messages from parent
+     */
+    function handleWebSocketMessage(data) {
+      const ws = pendingWebSockets.get(data.id);
+      if (!ws) {
+        console.warn('[Sandbox] WebSocket message for unknown ID:', data.id);
+        return;
+      }
+
+      switch (data.event) {
+        case 'open':
+          ws._handleOpen(data.protocol, data.extensions);
+          break;
+        case 'message':
+          ws._handleMessage(data.data);
+          break;
+        case 'error':
+          ws._handleError(data.message);
+          break;
+        case 'close':
+          ws._handleClose(data.code, data.reason, data.wasClean);
+          break;
+      }
+    }
+
+    /**
+     * Iframe content loading - intercepts iframe src and loads through wormhole
+     */
+    async function loadIframeContent(iframe) {
+      const src = iframe.getAttribute('src');
+      if (!src || isExternalUrl(src) || iframe.hasAttribute('data-wh-loaded')) {
+        return;
+      }
+
+      iframe.setAttribute('data-wh-loaded', 'true');
+      const resolvedPath = resolvePath(currentPath, src);
+      console.log('[Sandbox] Loading iframe content:', resolvedPath);
+
+      try {
+        const html = await requestResource(resolvedPath);
+
+        // Create srcdoc with the fetched content
+        // Add a base tag and inject our communication script
+        const wrappedHtml = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <base href="${resolvedPath}">
+            <script>
+              // Mini communication bridge for nested iframe
+              window.addEventListener('message', function(e) {
+                if (e.data.type === 'WH_PARENT_RESPONSE') {
+                  window.dispatchEvent(new CustomEvent('wh-response', { detail: e.data }));
+                }
+              });
+
+              // Override fetch for this iframe
+              const originalFetch = window.fetch;
+              window.fetch = async function(url, init) {
+                if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+                  return originalFetch(url, init);
+                }
+                return new Promise((resolve, reject) => {
+                  const id = 'iframe-req-' + Date.now() + '-' + Math.random();
+                  const handler = (e) => {
+                    if (e.detail.id === id) {
+                      window.removeEventListener('wh-response', handler);
+                      if (e.detail.error) reject(new Error(e.detail.error));
+                      else resolve(new Response(e.detail.data, { status: e.detail.status || 200 }));
+                    }
+                  };
+                  window.addEventListener('wh-response', handler);
+                  window.parent.postMessage({ type: 'WH_IFRAME_REQUEST', id, url, method: init?.method || 'GET' }, '*');
+                });
+              };
+            <\/script>
+          </head>
+          <body>
+            ${html.replace(/<html[^>]*>|<\/html>|<head[^>]*>.*?<\/head>|<body[^>]*>|<\/body>/gis, '')}
+          </body>
+          </html>
+        `;
+
+        // Use srcdoc instead of src
+        iframe.removeAttribute('src');
+        iframe.setAttribute('srcdoc', wrappedHtml);
+
+        console.log('[Sandbox] Iframe content loaded:', resolvedPath);
+      } catch (error) {
+        console.error('[Sandbox] Failed to load iframe:', resolvedPath, error);
+        // Show error in iframe
+        iframe.srcdoc = `<html><body style="font-family:sans-serif;padding:20px;color:#e74c3c;">
+          <h3>Failed to load iframe</h3>
+          <p>${error.message}</p>
+        </body></html>`;
+      }
+    }
+
+    /**
+     * Process all iframes in a container
+     */
+    function processIframes(container) {
+      const iframes = container.querySelectorAll('iframe[src]');
+      iframes.forEach(iframe => loadIframeContent(iframe));
+    }
+
+    /**
+     * Create localStorage proxy
+     */
+    const localStorageProxy = {
+      getItem: (key) => siteStorage.local[key] ?? null,
+      setItem: (key, value) => {
+        siteStorage.local[key] = String(value);
+        window.parent.postMessage({
+          type: 'STORAGE_SET',
+          storageType: 'local',
+          key: key,
+          value: String(value)
+        }, '*');
+      },
+      removeItem: (key) => {
+        delete siteStorage.local[key];
+        window.parent.postMessage({
+          type: 'STORAGE_REMOVE',
+          storageType: 'local',
+          key: key
+        }, '*');
+      },
+      clear: () => {
+        siteStorage.local = {};
+        window.parent.postMessage({
+          type: 'STORAGE_CLEAR',
+          storageType: 'local'
+        }, '*');
+      },
+      get length() { return Object.keys(siteStorage.local).length; },
+      key: (index) => Object.keys(siteStorage.local)[index] ?? null
+    };
+
+    /**
+     * Create sessionStorage proxy
+     */
+    const sessionStorageProxy = {
+      getItem: (key) => siteStorage.session[key] ?? null,
+      setItem: (key, value) => {
+        siteStorage.session[key] = String(value);
+        window.parent.postMessage({
+          type: 'STORAGE_SET',
+          storageType: 'session',
+          key: key,
+          value: String(value)
+        }, '*');
+      },
+      removeItem: (key) => {
+        delete siteStorage.session[key];
+        window.parent.postMessage({
+          type: 'STORAGE_REMOVE',
+          storageType: 'session',
+          key: key
+        }, '*');
+      },
+      clear: () => {
+        siteStorage.session = {};
+        window.parent.postMessage({
+          type: 'STORAGE_CLEAR',
+          storageType: 'session'
+        }, '*');
+      },
+      get length() { return Object.keys(siteStorage.session).length; },
+      key: (index) => Object.keys(siteStorage.session)[index] ?? null
+    };
+
+    // Override localStorage and sessionStorage
+    Object.defineProperty(window, 'localStorage', { value: localStorageProxy, writable: false });
+    Object.defineProperty(window, 'sessionStorage', { value: sessionStorageProxy, writable: false });
+
+    /**
+     * Cookie proxy via document.cookie override
+     */
+    Object.defineProperty(document, 'cookie', {
+      get: () => {
+        return Object.entries(siteCookies)
+          .map(([k, v]) => `${k}=${v}`)
+          .join('; ');
+      },
+      set: (value) => {
+        const parts = value.split(';')[0].split('=');
+        if (parts.length >= 2) {
+          const key = parts[0].trim();
+          const val = parts.slice(1).join('=').trim();
+          siteCookies[key] = val;
+          window.parent.postMessage({
+            type: 'COOKIE_SET',
+            cookie: value
+          }, '*');
+        }
+      }
+    });
+
+    /**
+     * Location proxy - creates a full Location-like object
+     */
+    function createLocationProxy() {
+      const getSearch = () => {
+        const idx = currentPath.indexOf('?');
+        const hashIdx = currentPath.indexOf('#');
+        if (idx < 0) return '';
+        const end = hashIdx > idx ? hashIdx : currentPath.length;
+        return currentPath.substring(idx, end);
+      };
+
+      const getHash = () => {
+        const idx = currentPath.indexOf('#');
+        return idx >= 0 ? currentPath.substring(idx) : '';
+      };
+
+      const getPathname = () => {
+        let path = currentPath;
+        const queryIdx = path.indexOf('?');
+        const hashIdx = path.indexOf('#');
+        if (queryIdx >= 0) path = path.substring(0, queryIdx);
+        else if (hashIdx >= 0) path = path.substring(0, hashIdx);
+        return path || '/';
+      };
+
+      return {
+        get href() { return `wh://${currentAddress}${currentPath}`; },
+        set href(url) {
+          if (url.startsWith('wh://')) {
+            const parts = url.substring(5).split('/');
+            const addr = parts[0];
+            const path = '/' + parts.slice(1).join('/');
+            window.parent.postMessage({ type: 'NAVIGATE_ADDRESS', address: addr, path: path }, '*');
+          } else {
+            window.parent.postMessage({ type: 'NAVIGATE', path: resolvePath(currentPath, url) }, '*');
+          }
+        },
+        get pathname() { return getPathname(); },
+        set pathname(val) {
+          window.parent.postMessage({ type: 'NAVIGATE', path: val + getSearch() + getHash() }, '*');
+        },
+        get host() { return currentAddress; },
+        get hostname() { return currentAddress; },
+        get origin() { return `wh://${currentAddress}`; },
+        get protocol() { return 'wh:'; },
+        get search() { return getSearch(); },
+        set search(val) {
+          const s = val.startsWith('?') ? val : '?' + val;
+          window.parent.postMessage({ type: 'NAVIGATE', path: getPathname() + s + getHash() }, '*');
+        },
+        get hash() { return getHash(); },
+        set hash(val) {
+          const h = val.startsWith('#') ? val : '#' + val;
+          // Hash changes don't need navigation, just scroll
+          const targetId = h.substring(1);
+          const target = document.getElementById(targetId);
+          if (target) target.scrollIntoView();
+          // Update internal state
+          const basePath = currentPath.split('#')[0];
+          currentPath = basePath + h;
+        },
+        get port() { return ''; },
+
+        assign: (url) => {
+          window.parent.postMessage({ type: 'NAVIGATE', path: resolvePath(currentPath, url) }, '*');
+        },
+        replace: (url) => {
+          window.parent.postMessage({ type: 'NAVIGATE', path: resolvePath(currentPath, url), replace: true }, '*');
+        },
+        reload: (forceGet) => {
+          window.parent.postMessage({ type: 'NAVIGATE', path: currentPath, forceReload: !!forceGet }, '*');
+        },
+        toString() { return `wh://${currentAddress}${currentPath}`; },
+        valueOf() { return `wh://${currentAddress}${currentPath}`; },
+        // For compatibility
+        ancestorOrigins: { length: 0 }
+      };
+    }
+
+    const locationProxy = createLocationProxy();
+
+    // Use multiple strategies to override location
+    let locationOverrideSuccess = false;
+
+    // Strategy 1: Try delete and redefine (works in some contexts)
+    try {
+      delete window.location;
+      Object.defineProperty(window, 'location', {
+        value: locationProxy,
+        writable: false,
+        configurable: false
+      });
+      locationOverrideSuccess = true;
+      console.log('[Sandbox] window.location override: delete+define');
+    } catch (e) {
+      // Strategy 2: Try using a Proxy on the window object (doesn't work for location)
+      try {
+        Object.defineProperty(window, 'location', {
+          get: () => locationProxy,
+          configurable: false
+        });
+        locationOverrideSuccess = true;
+        console.log('[Sandbox] window.location override: getter');
+      } catch (e2) {
+        console.warn('[Sandbox] Could not override window.location, using workaround');
+      }
+    }
+
+    // Strategy 3: Create window.whLocation as a reliable alternative
+    Object.defineProperty(window, 'whLocation', {
+      value: locationProxy,
+      writable: false,
+      configurable: false
+    });
+
+    // Also expose on document for scripts that check document.location
+    try {
+      Object.defineProperty(document, 'whLocation', {
+        value: locationProxy,
+        writable: false
+      });
+    } catch (e) {}
+
+    /**
+     * History API proxy
+     */
+    const historyStack = [];
+    let historyIndex = -1;
+
+    const historyProxy = {
+      get length() { return historyStack.length; },
+      get state() { return historyStack[historyIndex]?.state || null; },
+      get scrollRestoration() { return 'auto'; },
+      set scrollRestoration(val) {},
+
+      pushState: (state, title, url) => {
+        const newPath = url ? resolvePath(currentPath, url) : currentPath;
+        historyIndex++;
+        historyStack.splice(historyIndex, historyStack.length - historyIndex, {
+          state: state,
+          title: title,
+          path: newPath
+        });
+        currentPath = newPath;
+        window.parent.postMessage({
+          type: 'HISTORY_PUSH',
+          path: newPath,
+          state: state,
+          title: title
+        }, '*');
+        console.log('[Sandbox] pushState:', newPath);
+      },
+
+      replaceState: (state, title, url) => {
+        const newPath = url ? resolvePath(currentPath, url) : currentPath;
+        if (historyIndex >= 0) {
+          historyStack[historyIndex] = { state, title, path: newPath };
+        } else {
+          historyStack.push({ state, title, path: newPath });
+          historyIndex = 0;
+        }
+        currentPath = newPath;
+        window.parent.postMessage({
+          type: 'HISTORY_REPLACE',
+          path: newPath,
+          state: state,
+          title: title
+        }, '*');
+        console.log('[Sandbox] replaceState:', newPath);
+      },
+
+      go: (delta) => {
+        const newIndex = historyIndex + delta;
+        if (newIndex >= 0 && newIndex < historyStack.length) {
+          historyIndex = newIndex;
+          const entry = historyStack[newIndex];
+          currentPath = entry.path;
+          window.parent.postMessage({ type: 'NAVIGATE', path: entry.path }, '*');
+          window.dispatchEvent(new PopStateEvent('popstate', { state: entry.state }));
+        }
+      },
+
+      back: () => historyProxy.go(-1),
+      forward: () => historyProxy.go(1)
+    };
+
+    // Override history
+    try {
+      Object.defineProperty(window, 'history', { value: historyProxy, writable: false });
+      console.log('[Sandbox] history override: success');
+    } catch (e) {
+      console.warn('[Sandbox] Could not override history');
+    }
+
+    /**
+     * window.open proxy - opens wormhole URLs in new viewer tabs
+     */
+    const originalOpen = window.open;
+    window.open = function(url, target, features) {
+      if (!url) return originalOpen.call(window, url, target, features);
+
+      // Check if it's a wormhole URL or internal path
+      if (url.startsWith('wh://')) {
+        const parts = url.substring(5).split('/');
+        const address = parts[0];
+        const path = '/' + parts.slice(1).join('/') || '/';
+        window.parent.postMessage({
+          type: 'WINDOW_OPEN',
+          address: address,
+          path: path,
+          target: target,
+          features: features
+        }, '*');
+        // Return a mock window object
+        return {
+          closed: false,
+          close: () => {},
+          focus: () => {},
+          blur: () => {},
+          postMessage: () => {}
+        };
+      } else if (!isExternalUrl(url)) {
+        // Internal relative path
+        const resolvedPath = resolvePath(currentPath, url);
+        window.parent.postMessage({
+          type: 'WINDOW_OPEN',
+          address: currentAddress,
+          path: resolvedPath,
+          target: target,
+          features: features
+        }, '*');
+        return {
+          closed: false,
+          close: () => {},
+          focus: () => {},
+          blur: () => {},
+          postMessage: () => {}
+        };
+      }
+
+      // External URLs use normal window.open
+      return originalOpen.call(window, url, target, features);
+    };
+
+    /**
+     * Web Worker proxy - loads worker scripts through wormhole
+     */
+    const OriginalWorker = window.Worker;
+    class WormholeWorker {
+      constructor(scriptURL, options = {}) {
+        this._id = `worker-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        this._terminated = false;
+        this.onmessage = null;
+        this.onerror = null;
+        this.onmessageerror = null;
+
+        // Load worker script through wormhole
+        const resolvedPath = isExternalUrl(scriptURL) ? scriptURL : resolvePath(currentPath, scriptURL);
+        console.log('[Sandbox] Creating worker from:', resolvedPath);
+
+        if (isExternalUrl(resolvedPath)) {
+          // External worker - use original
+          this._worker = new OriginalWorker(resolvedPath, options);
+          this._worker.onmessage = (e) => { if (this.onmessage) this.onmessage(e); };
+          this._worker.onerror = (e) => { if (this.onerror) this.onerror(e); };
+          this._worker.onmessageerror = (e) => { if (this.onmessageerror) this.onmessageerror(e); };
+        } else {
+          // Load script and create blob worker
+          requestResource(resolvedPath)
+            .then(code => {
+              // Wrap worker code with wormhole fetch override
+              const wrappedCode = `
+                // Wormhole Worker Runtime
+                const _whBasePath = '${resolvedPath.replace(/\/[^\/]*$/, '/')}';
+                const _whAddress = '${currentAddress}';
+
+                // Simple path resolution
+                function _whResolvePath(base, relative) {
+                  if (!relative) return base;
+                  if (relative.startsWith('/')) return relative;
+                  if (relative.startsWith('http://') || relative.startsWith('https://')) return relative;
+                  const baseDir = base.endsWith('/') ? base : base.replace(/\\/[^\\/]*$/, '/');
+                  let path = baseDir + relative;
+                  const parts = path.split('/');
+                  const result = [];
+                  for (const part of parts) {
+                    if (part === '..') result.pop();
+                    else if (part !== '.' && part !== '') result.push(part);
+                  }
+                  return '/' + result.join('/');
+                }
+
+                // Override importScripts
+                const _origImportScripts = self.importScripts;
+                self.importScripts = function(...urls) {
+                  // For now, only allow external URLs in workers
+                  const external = urls.filter(u => u.startsWith('http://') || u.startsWith('https://'));
+                  if (external.length > 0) {
+                    _origImportScripts.apply(self, external);
+                  }
+                };
+
+                // Original worker code
+                ${code}
+              `;
+
+              const blob = new Blob([wrappedCode], { type: 'application/javascript' });
+              const blobUrl = URL.createObjectURL(blob);
+
+              this._worker = new OriginalWorker(blobUrl, options);
+              this._worker.onmessage = (e) => { if (this.onmessage) this.onmessage(e); };
+              this._worker.onerror = (e) => { if (this.onerror) this.onerror(e); };
+              this._worker.onmessageerror = (e) => { if (this.onmessageerror) this.onmessageerror(e); };
+
+              // Clean up blob URL
+              URL.revokeObjectURL(blobUrl);
+
+              console.log('[Sandbox] Worker created:', this._id);
+            })
+            .catch(err => {
+              console.error('[Sandbox] Failed to load worker:', resolvedPath, err);
+              if (this.onerror) {
+                this.onerror(new ErrorEvent('error', { message: err.message }));
+              }
+            });
+        }
+      }
+
+      postMessage(message, transfer) {
+        if (this._worker) {
+          this._worker.postMessage(message, transfer);
+        }
+      }
+
+      terminate() {
+        this._terminated = true;
+        if (this._worker) {
+          this._worker.terminate();
+        }
+      }
+
+      addEventListener(type, listener) {
+        if (this._worker) {
+          this._worker.addEventListener(type, listener);
+        }
+      }
+
+      removeEventListener(type, listener) {
+        if (this._worker) {
+          this._worker.removeEventListener(type, listener);
+        }
+      }
+    }
+    window.Worker = WormholeWorker;
+    console.log('[Sandbox] Worker proxy installed');
+
+    /**
+     * IndexedDB proxy - stores data per-site through viewer
+     */
+    const idbDatabases = new Map();
+    let idbRequestId = 0;
+    const pendingIdbRequests = new Map();
+
+    function idbRequest(operation, data) {
+      return new Promise((resolve, reject) => {
+        const id = `idb-${++idbRequestId}`;
+        pendingIdbRequests.set(id, { resolve, reject });
+        window.parent.postMessage({
+          type: 'IDB_REQUEST',
+          id: id,
+          operation: operation,
+          ...data
+        }, '*');
+      });
+    }
+
+    // Create a minimal IDBFactory-like interface
+    const indexedDBProxy = {
+      open: (name, version) => {
+        const request = {
+          result: null,
+          error: null,
+          readyState: 'pending',
+          onupgradeneeded: null,
+          onsuccess: null,
+          onerror: null,
+          onblocked: null
+        };
+
+        // Use parent to coordinate database operations
+        window.parent.postMessage({
+          type: 'IDB_OPEN',
+          name: name,
+          version: version
+        }, '*');
+
+        // For now, create an in-memory mock
+        setTimeout(() => {
+          const db = createMockIDBDatabase(name, version);
+          request.result = db;
+          request.readyState = 'done';
+          if (request.onsuccess) {
+            request.onsuccess({ target: request });
+          }
+        }, 0);
+
+        return request;
+      },
+
+      deleteDatabase: (name) => {
+        const request = {
+          result: undefined,
+          error: null,
+          readyState: 'pending',
+          onsuccess: null,
+          onerror: null,
+          onblocked: null
+        };
+
+        window.parent.postMessage({
+          type: 'IDB_DELETE',
+          name: name
+        }, '*');
+
+        setTimeout(() => {
+          request.readyState = 'done';
+          if (request.onsuccess) {
+            request.onsuccess({ target: request });
+          }
+        }, 0);
+
+        return request;
+      },
+
+      databases: async () => {
+        // Return list of databases for this site
+        return [];
+      },
+
+      cmp: (a, b) => {
+        if (a < b) return -1;
+        if (a > b) return 1;
+        return 0;
+      }
+    };
+
+    // Create a mock IDB database that syncs with viewer storage
+    function createMockIDBDatabase(name, version) {
+      const stores = new Map();
+
+      return {
+        name: name,
+        version: version,
+        objectStoreNames: { length: 0, contains: () => false, item: () => null },
+
+        createObjectStore: (storeName, options) => {
+          const store = createMockObjectStore(name, storeName, options);
+          stores.set(storeName, store);
+          return store;
+        },
+
+        transaction: (storeNames, mode) => {
+          return createMockTransaction(name, storeNames, mode, stores);
+        },
+
+        close: () => {},
+
+        onabort: null,
+        onclose: null,
+        onerror: null,
+        onversionchange: null
+      };
+    }
+
+    function createMockObjectStore(dbName, storeName, options) {
+      const data = new Map();
+      const keyPath = options?.keyPath || null;
+      const autoIncrement = options?.autoIncrement || false;
+      let autoKey = 1;
+
+      return {
+        name: storeName,
+        keyPath: keyPath,
+        autoIncrement: autoIncrement,
+        indexNames: { length: 0, contains: () => false, item: () => null },
+
+        put: (value, key) => {
+          const useKey = key || (keyPath ? value[keyPath] : autoKey++);
+          data.set(useKey, value);
+
+          // Sync to viewer storage
+          window.parent.postMessage({
+            type: 'IDB_PUT',
+            database: dbName,
+            store: storeName,
+            key: useKey,
+            value: value
+          }, '*');
+
+          return createIDBRequest(useKey);
+        },
+
+        get: (key) => {
+          return createIDBRequest(data.get(key));
+        },
+
+        delete: (key) => {
+          data.delete(key);
+          window.parent.postMessage({
+            type: 'IDB_DELETE_ITEM',
+            database: dbName,
+            store: storeName,
+            key: key
+          }, '*');
+          return createIDBRequest(undefined);
+        },
+
+        clear: () => {
+          data.clear();
+          window.parent.postMessage({
+            type: 'IDB_CLEAR',
+            database: dbName,
+            store: storeName
+          }, '*');
+          return createIDBRequest(undefined);
+        },
+
+        getAll: () => createIDBRequest(Array.from(data.values())),
+        getAllKeys: () => createIDBRequest(Array.from(data.keys())),
+        count: () => createIDBRequest(data.size),
+
+        createIndex: () => {},
+        index: () => null,
+        openCursor: () => createIDBRequest(null),
+        openKeyCursor: () => createIDBRequest(null)
+      };
+    }
+
+    function createMockTransaction(dbName, storeNames, mode, stores) {
+      const storeList = Array.isArray(storeNames) ? storeNames : [storeNames];
+
+      return {
+        db: null,
+        mode: mode || 'readonly',
+        objectStoreNames: storeList,
+        error: null,
+
+        objectStore: (name) => {
+          return stores.get(name) || createMockObjectStore(dbName, name, {});
+        },
+
+        abort: () => {},
+        commit: () => {},
+
+        onabort: null,
+        oncomplete: null,
+        onerror: null
+      };
+    }
+
+    function createIDBRequest(result) {
+      const request = {
+        result: result,
+        error: null,
+        readyState: 'done',
+        onsuccess: null,
+        onerror: null
+      };
+
+      setTimeout(() => {
+        if (request.onsuccess) {
+          request.onsuccess({ target: request });
+        }
+      }, 0);
+
+      return request;
+    }
+
+    // Override indexedDB
+    try {
+      Object.defineProperty(window, 'indexedDB', { value: indexedDBProxy, writable: false });
+      console.log('[Sandbox] IndexedDB proxy installed');
+    } catch (e) {
+      console.warn('[Sandbox] Could not override indexedDB');
+    }
+
+    /**
+     * Permission APIs - proxy requests through parent
+     * Note: Permission dialogs will reference extension origin, not wormhole address
+     * All wrapped in try-catch to prevent breaking the sandbox
+     */
+
+    // Geolocation proxy
+    try {
+      if (navigator.geolocation) {
+        const originalGeolocation = navigator.geolocation;
+        const geolocationProxy = {
+          getCurrentPosition: (success, error, options) => {
+            console.log('[Sandbox] Geolocation.getCurrentPosition requested');
+            originalGeolocation.getCurrentPosition(success, error, options);
+          },
+          watchPosition: (success, error, options) => {
+            console.log('[Sandbox] Geolocation.watchPosition requested');
+            return originalGeolocation.watchPosition(success, error, options);
+          },
+          clearWatch: (id) => {
+            originalGeolocation.clearWatch(id);
+          }
+        };
+        Object.defineProperty(navigator, 'geolocation', {
+          value: geolocationProxy,
+          writable: false
+        });
+      }
+    } catch (e) {
+      console.warn('[Sandbox] Geolocation proxy failed:', e.message);
+    }
+
+    // Notifications proxy
+    try {
+      if (window.Notification) {
+        const OriginalNotification = window.Notification;
+
+        class WormholeNotification {
+          constructor(title, options = {}) {
+            console.log('[Sandbox] Notification created:', title);
+            const whTitle = `[${currentAddress}] ${title}`;
+            this._notification = new OriginalNotification(whTitle, options);
+          }
+
+          static get permission() {
+            return OriginalNotification.permission;
+          }
+
+          static requestPermission(callback) {
+            console.log('[Sandbox] Notification permission requested');
+            return OriginalNotification.requestPermission(callback);
+          }
+
+          close() {
+            if (this._notification) this._notification.close();
+          }
+
+          addEventListener(type, listener) {
+            if (this._notification) this._notification.addEventListener(type, listener);
+          }
+
+          removeEventListener(type, listener) {
+            if (this._notification) this._notification.removeEventListener(type, listener);
+          }
+        }
+
+        window.Notification = WormholeNotification;
+      }
+    } catch (e) {
+      console.warn('[Sandbox] Notification proxy failed:', e.message);
+    }
+
+    // Service Worker - NOT SUPPORTED in sandbox
+    try {
+      if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+        const neverReady = new Promise(() => {});
+        const swProxy = {
+          register: () => {
+            console.warn('[Sandbox] Service Workers are not supported in wormhole sandbox');
+            return Promise.reject(new Error('Service Workers are not supported'));
+          },
+          getRegistration: () => Promise.resolve(undefined),
+          getRegistrations: () => Promise.resolve([]),
+          ready: neverReady,
+          controller: null,
+          oncontrollerchange: null,
+          onmessage: null,
+          onmessageerror: null
+        };
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: swProxy,
+          writable: false,
+          configurable: true
+        });
+      }
+    } catch (e) {
+      // ServiceWorker may not be available in sandbox - that's fine
+    }
+
+    // Clipboard API proxy
+    try {
+      if (navigator.clipboard) {
+        const originalClipboard = navigator.clipboard;
+        const clipboardProxy = {
+          writeText: async (text) => {
+            console.log('[Sandbox] Clipboard.writeText');
+            return originalClipboard.writeText(text);
+          },
+          readText: async () => {
+            console.log('[Sandbox] Clipboard.readText');
+            return originalClipboard.readText();
+          },
+          write: async (data) => {
+            console.log('[Sandbox] Clipboard.write');
+            return originalClipboard.write(data);
+          },
+          read: async () => {
+            console.log('[Sandbox] Clipboard.read');
+            return originalClipboard.read();
+          }
+        };
+        Object.defineProperty(navigator, 'clipboard', {
+          value: clipboardProxy,
+          writable: false
+        });
+      }
+    } catch (e) {
+      console.warn('[Sandbox] Clipboard proxy failed:', e.message);
+    }
+
+    // MediaDevices proxy (camera/microphone)
+    try {
+      if (navigator.mediaDevices) {
+        const originalMediaDevices = navigator.mediaDevices;
+        const mediaDevicesProxy = {
+          getUserMedia: async (constraints) => {
+            console.log('[Sandbox] getUserMedia requested:', constraints);
+            return originalMediaDevices.getUserMedia(constraints);
+          },
+          getDisplayMedia: async (constraints) => {
+            console.log('[Sandbox] getDisplayMedia requested:', constraints);
+            return originalMediaDevices.getDisplayMedia(constraints);
+          },
+          enumerateDevices: async () => {
+            return originalMediaDevices.enumerateDevices();
+          },
+          getSupportedConstraints: () => {
+            return originalMediaDevices.getSupportedConstraints();
+          },
+          ondevicechange: null
+        };
+        Object.defineProperty(navigator, 'mediaDevices', {
+          value: mediaDevicesProxy,
+          writable: false
+        });
+      }
+    } catch (e) {
+      console.warn('[Sandbox] MediaDevices proxy failed:', e.message);
+    }
+
+    /**
+     * RTCPeerConnection proxy with public STUN/TURN servers
+     * Uses free public STUN servers and optionally TURN for NAT traversal
+     */
+    try {
+      const OriginalRTCPeerConnection = window.RTCPeerConnection;
+
+      // Default ICE servers with public STUN servers
+      const defaultIceServers = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+        { urls: 'stun:stun.stunprotocol.org:3478' },
+        { urls: 'stun:stun.voip.blackberry.com:3478' }
+      ];
+
+      class WormholeRTCPeerConnection extends OriginalRTCPeerConnection {
+        constructor(configuration = {}) {
+          // Merge user's ICE servers with defaults, or use defaults if none provided
+          const iceServers = configuration.iceServers && configuration.iceServers.length > 0
+            ? configuration.iceServers
+            : defaultIceServers;
+
+          const mergedConfig = {
+            ...configuration,
+            iceServers: iceServers
+          };
+
+          super(mergedConfig);
+
+          console.log('[Sandbox] RTCPeerConnection created with ICE servers:', iceServers.length);
+
+          // Log ICE connection state changes
+          this.addEventListener('iceconnectionstatechange', () => {
+            console.log('[Sandbox] ICE connection state:', this.iceConnectionState);
+          });
+
+          this.addEventListener('icegatheringstatechange', () => {
+            console.log('[Sandbox] ICE gathering state:', this.iceGatheringState);
+          });
+
+          this.addEventListener('icecandidate', (event) => {
+            if (event.candidate) {
+              console.log('[Sandbox] ICE candidate:', event.candidate.type, event.candidate.address);
+            }
+          });
+
+          this.addEventListener('connectionstatechange', () => {
+            console.log('[Sandbox] Connection state:', this.connectionState);
+          });
+        }
+      }
+
+      // Also proxy RTCSessionDescription and RTCIceCandidate if needed
+      window.RTCPeerConnection = WormholeRTCPeerConnection;
+      console.log('[Sandbox] RTCPeerConnection proxy installed with public STUN servers');
+    } catch (e) {
+      console.warn('[Sandbox] RTCPeerConnection proxy failed:', e.message);
+    }
+
+    /**
+     * Extract and inject styles from HTML head
+     */
+    function extractStyles(html) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const styles = doc.querySelectorAll('style');
+      return Array.from(styles).map(el => el.outerHTML).join('\n');
+    }
+
+    /**
+     * Extract title from HTML
+     */
+    function extractTitle(html) {
+      const match = html.match(/<title>([^<]*)<\/title>/i);
+      return match ? match[1] : null;
+    }
+
+    /**
+     * MutationObserver for dynamic content
+     */
+    let observer = null;
+
+    function setupObserver() {
+      if (observer) return;
+
+      observer = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+          mutation.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              // Rewrite links
+              if (node.tagName === 'A' && node.hasAttribute('href')) {
+                rewriteLink(node);
+              }
+              // Process iframes
+              if (node.tagName === 'IFRAME' && node.hasAttribute('src')) {
+                loadIframeContent(node);
+              }
+              if (node.querySelectorAll) {
+                node.querySelectorAll('a[href]').forEach(link => rewriteLink(link));
+
+                // Load images in new nodes
+                rewriteImages(node);
+
+                // Load scripts in new nodes
+                loadExternalScripts(node);
+
+                // Process iframes in new nodes
+                processIframes(node);
+              }
+            }
+          });
+        });
+      });
+
+      observer.observe(contentEl, { childList: true, subtree: true });
+    }
+
+    /**
+     * Execute inline scripts
+     */
+    function executeInlineScripts(container) {
+      const scripts = container.querySelectorAll('script:not([src])');
+
+      scripts.forEach((script, index) => {
+        try {
+          const newScript = document.createElement('script');
+          if (script.type) newScript.type = script.type;
+          newScript.textContent = script.textContent;
+          script.parentNode.replaceChild(newScript, script);
+          console.log('[Sandbox] Executed inline script', index);
+        } catch (error) {
+          console.error('[Sandbox] Error executing script', index, ':', error);
+        }
+      });
+    }
+
+    /**
+     * Render HTML content with full resource loading
+     */
+    async function renderContent(html, path, address, storage = {}, cookies = {}) {
+      console.log('[Sandbox] Rendering content for path:', path);
+      currentPath = path;
+      currentAddress = address;
+
+      // Initialize storage
+      siteStorage.local = storage.local || {};
+      siteStorage.session = storage.session || {};
+      siteCookies = cookies || {};
+
+      // Remove old injected styles
+      document.querySelectorAll('.wh-injected-style').forEach(el => el.remove());
+
+      // Parse HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      // Load external stylesheets first
+      await loadExternalStylesheets(doc);
+
+      // Extract and inject remaining styles
+      const styles = extractStyles(html);
+      if (styles) {
+        const styleContainer = document.createElement('div');
+        styleContainer.className = 'wh-injected-style';
+        styleContainer.innerHTML = styles;
+        document.head.appendChild(styleContainer);
+      }
+
+      // Rewrite links in body
+      if (doc.body) {
+        doc.body.querySelectorAll('a[href]').forEach(link => rewriteLink(link));
+      }
+
+      // Set content (without scripts initially)
+      const bodyContent = doc.body ? doc.body.innerHTML : html;
+      contentEl.innerHTML = bodyContent;
+
+      // Set up observer for dynamic content
+      setupObserver();
+
+      // Load external resources in parallel
+      await Promise.all([
+        rewriteImages(contentEl),
+        rewriteMedia(contentEl),
+        rewriteCssUrls(contentEl),
+        rewriteInlineStyles(contentEl),
+        loadExternalScripts(contentEl)
+      ]);
+
+      // Process iframes
+      processIframes(contentEl);
+
+      // Execute inline scripts after DOM and resources are ready
+      executeInlineScripts(contentEl);
+
+      // Notify parent of title change
+      const title = extractTitle(html);
+      if (title) {
+        window.parent.postMessage({ type: 'TITLE_CHANGE', title: title }, '*');
+      }
+
+      // Notify parent that content is loaded
+      window.parent.postMessage({ type: 'CONTENT_LOADED', path: path }, '*');
+
+      console.log('[Sandbox] Content rendered for path:', path);
+    }
+
+    /**
+     * Handle link clicks
+     */
+    document.addEventListener('click', (event) => {
+      const link = event.target.closest('a');
+      if (!link) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      // Check for internal wormhole link
+      const whHref = link.getAttribute('data-wh-href');
+      if (whHref) {
+        const newPath = resolvePath(currentPath, whHref);
+        console.log('[Sandbox] Internal link clicked:', whHref, '-> resolved to:', newPath);
+        window.parent.postMessage({ type: 'NAVIGATE', path: newPath }, '*');
+        return;
+      }
+
+      // External link
+      const href = link.getAttribute('href');
+      if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+        window.parent.postMessage({ type: 'EXTERNAL_LINK', url: href }, '*');
+        return;
+      }
+
+      // Hash link
+      if (href && href.startsWith('#')) {
+        const targetId = href.substring(1);
+        const target = document.getElementById(targetId);
+        if (target) target.scrollIntoView();
+        return;
+      }
+
+      // Non-rewritten internal link (fallback)
+      if (href && !href.startsWith('javascript:') && !href.startsWith('mailto:') && !href.startsWith('tel:')) {
+        const newPath = resolvePath(currentPath, href);
+        window.parent.postMessage({ type: 'NAVIGATE', path: newPath }, '*');
+      }
+    }, true);
+
+    /**
+     * Handle form submissions with file upload support
+     */
+    document.addEventListener('submit', async (event) => {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement)) return;
+
+      const action = form.getAttribute('action') || currentPath;
+      const method = (form.getAttribute('method') || 'GET').toUpperCase();
+      const enctype = form.getAttribute('enctype') || 'application/x-www-form-urlencoded';
+
+      if (isExternalUrl(action)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const formData = new FormData(form);
+      const hasFiles = Array.from(formData.entries()).some(([k, v]) => v instanceof File && v.size > 0);
+
+      const newPath = resolvePath(currentPath, action);
+
+      if (hasFiles && enctype === 'multipart/form-data') {
+        // Handle file uploads
+        const filesData = [];
+        const regularData = {};
+
+        for (const [key, value] of formData.entries()) {
+          if (value instanceof File && value.size > 0) {
+            // Read file as base64
+            const reader = new FileReader();
+            const fileData = await new Promise((resolve) => {
+              reader.onload = () => resolve({
+                name: value.name,
+                type: value.type,
+                size: value.size,
+                data: reader.result.split(',')[1] // base64 part
+              });
+              reader.readAsDataURL(value);
+            });
+            filesData.push({ field: key, file: fileData });
+          } else {
+            regularData[key] = value;
+          }
+        }
+
+        window.parent.postMessage({
+          type: 'FORM_SUBMIT',
+          path: newPath,
+          method: method,
+          enctype: enctype,
+          data: regularData,
+          files: filesData
+        }, '*');
+      } else {
+        // Regular form submission
+        const data = {};
+        for (const [key, value] of formData.entries()) {
+          if (!(value instanceof File)) {
+            data[key] = value;
+          }
+        }
+
+        window.parent.postMessage({
+          type: 'FORM_SUBMIT',
+          path: newPath,
+          method: method,
+          data: data
+        }, '*');
+      }
+    }, true);
+
+    /**
+     * Listen for messages from parent
+     */
+    window.addEventListener('message', (event) => {
+      const { type, ...data } = event.data;
+
+      switch (type) {
+        case 'RENDER':
+          renderContent(data.html, data.path, data.address, data.storage, data.cookies);
+          break;
+
+        case 'RESOURCE_RESPONSE':
+          const pending = pendingRequests.get(data.id);
+          if (pending) {
+            clearTimeout(pending.timeout);
+            pendingRequests.delete(data.id);
+            if (data.error) {
+              pending.reject(new Error(data.error));
+            } else {
+              pending.resolve(data.responseType === 'blob' ? data.blobUrl : data.data);
+            }
+          }
+          break;
+
+        case 'STORAGE_INIT':
+          siteStorage.local = data.local || {};
+          siteStorage.session = data.session || {};
+          break;
+
+        case 'COOKIES_INIT':
+          siteCookies = data.cookies || {};
+          break;
+
+        case 'WS_EVENT':
+          handleWebSocketMessage(data);
+          break;
+
+        case 'WH_IFRAME_REQUEST':
+          // Handle requests from nested iframes
+          requestResource(data.path, { method: data.method || 'GET', responseType: 'full' })
+            .then(response => {
+              // Find the iframe that sent this request and respond
+              const iframes = document.querySelectorAll('iframe');
+              iframes.forEach(iframe => {
+                if (iframe.contentWindow) {
+                  iframe.contentWindow.postMessage({
+                    type: 'WH_PARENT_RESPONSE',
+                    id: data.id,
+                    data: response.body || response,
+                    status: response.status || 200
+                  }, '*');
+                }
+              });
+            })
+            .catch(error => {
+              const iframes = document.querySelectorAll('iframe');
+              iframes.forEach(iframe => {
+                if (iframe.contentWindow) {
+                  iframe.contentWindow.postMessage({
+                    type: 'WH_PARENT_RESPONSE',
+                    id: data.id,
+                    error: error.message
+                  }, '*');
+                }
+              });
+            });
+          break;
+      }
+    });
+
+    // Signal that sandbox is ready
+    window.parent.postMessage({ type: 'SANDBOX_READY' }, '*');
+    console.log('[Sandbox] Ready with full resource support');
+  </script>
+</body>
+</html>

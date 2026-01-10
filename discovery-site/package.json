@@ -1,0 +1,58 @@
+{
+  "name": "wormhole-discovery-site",
+  "version": "0.5.0",
+  "description": "Browse wormhole websites directly in your browser - no extension or daemon required",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "webpack serve --mode development --open",
+    "build": "webpack --mode production",
+    "preview": "npx serve dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.0.0",
+    "@noble/hashes": "^1.3.0",
+    "buffer": "^6.0.3",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "babel-loader": "^9.2.1",
+    "copy-webpack-plugin": "^12.0.2",
+    "css-loader": "^7.1.0",
+    "eslint": "^9.17.0",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.9.0",
+    "vitest": "^2.1.0",
+    "webpack": "^5.97.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.1.0"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Edge versions",
+    "last 2 Safari versions"
+  ],
+  "author": "Critical Wormhole Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bshuler/critical-wormhole-tools.git",
+    "directory": "discovery-site"
+  },
+  "keywords": [
+    "wormhole",
+    "discovery",
+    "p2p",
+    "decentralized",
+    "wns",
+    "browser"
+  ]
+}

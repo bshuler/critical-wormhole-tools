@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="wormhole-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#a855f7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#wormhole-gradient)"/>
+
+  <!-- Concentric rings (wormhole effect) -->
+  <circle cx="64" cy="64" r="48" fill="none" stroke="#fff" stroke-width="2" opacity="0.3"/>
+  <circle cx="64" cy="64" r="36" fill="none" stroke="#fff" stroke-width="2" opacity="0.5"/>
+  <circle cx="64" cy="64" r="24" fill="none" stroke="#fff" stroke-width="2" opacity="0.7"/>
+  <circle cx="64" cy="64" r="12" fill="none" stroke="#fff" stroke-width="2" opacity="0.9"/>
+
+  <!-- Center point -->
+  <circle cx="64" cy="64" r="4" fill="#fff"/>
+
+  <!-- Connection arrows -->
+  <path d="M20 64 L44 64" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <path d="M84 64 L108 64" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+  <polygon points="44,58 54,64 44,70" fill="#fff" opacity="0.8"/>
+  <polygon points="84,58 74,64 84,70" fill="#fff" opacity="0.8"/>
+</svg>

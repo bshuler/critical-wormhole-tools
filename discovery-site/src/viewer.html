@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loading...</title>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
+    /* Loading state */
+    #wh-loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-family: system-ui, -apple-system, sans-serif;
+      z-index: 999999;
+    }
+
+    #wh-loading .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #wh-loading .text {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    #wh-loading .address {
+      margin-top: 10px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    /* Error state */
+    #wh-error {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #f8d7da;
+      color: #721c24;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 40px;
+      z-index: 999999;
+    }
+
+    #wh-error h1 {
+      margin-bottom: 20px;
+    }
+
+    #wh-error .message {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    #wh-error .buttons {
+      display: flex;
+      gap: 1rem;
+    }
+
+    #wh-error button {
+      background: #721c24;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #wh-error button.secondary {
+      background: #6c757d;
+    }
+
+    /* Navigation loading bar */
+    #wh-nav-loading {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      animation: loading-bar 1s ease-in-out infinite;
+      z-index: 999999;
+    }
+
+    @keyframes loading-bar {
+      0% { transform: translateX(-100%); }
+      50% { transform: translateX(0%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Hidden when content loaded */
+    .wh-hidden {
+      display: none !important;
+    }
+
+    /* Sandbox iframe for content with JS execution */
+    #wh-sandbox {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      border: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    #wh-sandbox.active {
+      display: block;
+    }
+
+    /* Content div (fallback, not used when sandbox is active) */
+    #wh-content {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="wh-loading">
+    <div class="spinner"></div>
+    <div class="text">Connecting through wormhole...</div>
+    <div class="address" id="wh-loading-address"></div>
+  </div>
+
+  <div id="wh-error">
+    <h1>Connection Failed</h1>
+    <div class="message" id="wh-error-message"></div>
+    <div class="buttons">
+      <button onclick="location.reload()">Retry</button>
+      <button class="secondary" onclick="window.location.href='index.html'">Back to Home</button>
+    </div>
+  </div>
+
+  <div id="wh-nav-loading"></div>
+
+  <!-- Sandbox iframe for content with script execution -->
+  <iframe id="wh-sandbox" src="sandbox.html"></iframe>
+
+  <!-- Fallback content div (not used when sandbox is active) -->
+  <div id="wh-content"></div>
+</body>
+</html>
