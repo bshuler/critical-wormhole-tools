@@ -39,7 +39,12 @@ type Handler struct {
 	// Defaults to the public transit relay.
 	TransitURL string `json:"transit_url,omitempty"`
 
+	// DaemonURL is the wh daemon HTTP API endpoint.
+	// Defaults to http://127.0.0.1:9475
+	DaemonURL string `json:"daemon_url,omitempty"`
+
 	logger *zap.Logger
+	daemon *DaemonClient
 }
 
 // CaddyModule returns the Caddy module information.
@@ -61,11 +66,18 @@ func (h *Handler) Provision(ctx caddy.Context) error {
 	if h.TransitURL == "" {
 		h.TransitURL = "tcp:transit.magic-wormhole.io:4001"
 	}
+	if h.DaemonURL == "" {
+		h.DaemonURL = "http://127.0.0.1:9475"
+	}
+
+	// Initialize daemon client
+	h.daemon = NewDaemonClientWithURL(h.DaemonURL)
 
 	h.logger.Info("wormhole handler provisioned",
 		zap.String("identity", h.IdentityPath),
 		zap.String("name", h.Name),
 		zap.String("relay", h.RelayURL),
+		zap.String("daemon", h.DaemonURL),
 	)
 
 	return nil
@@ -123,6 +135,12 @@ func (h *Handler) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 					return d.ArgErr()
 				}
 				h.TransitURL = d.Val()
+
+			case "daemon":
+				if !d.NextArg() {
+					return d.ArgErr()
+				}
+				h.DaemonURL = d.Val()
 
 			default:
 				return d.Errf("unrecognized subdirective: %s", d.Val())
