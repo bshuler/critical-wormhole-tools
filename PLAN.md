@@ -355,6 +355,49 @@ Commits:
 
 ---
 
+## Current Work: Discovery Site Browser Testing
+
+### Goal
+Set up proper browser testing for the discovery site to verify wormhole connections work correctly in a browser environment.
+
+### Problem
+Headless Chromium in Playwright has issues with WebSocket/WebRTC connections - the wormhole connections fail to establish in headless mode.
+
+### Approach: Headed Mode with xvfb-run
+Use `xvfb-run` to create a virtual X display, allowing Playwright to run in "headed" mode which may have better WebSocket/WebRTC support.
+
+### Test Plan
+1. [x] Verify `xvfb-run` is available in the environment
+2. [x] Test headed browser mode with xvfb-run - **WORKS!**
+3. [ ] Create integration test script that uses headed mode
+4. [ ] Add proper fixtures for wormhole server testing
+5. [ ] Document the testing approach
+
+### Findings (2026-01-10)
+**Headed mode with xvfb-run works!** The WebSocket connection to the relay server succeeds and data is exchanged. However, there's a timing issue:
+
+1. **Dilation timeout is 30 seconds** - The browser tries to establish a dilated connection but fails after 30 seconds
+2. **Connection falls back to undilated mode** - After dilation timeout, connection continues successfully
+3. **Navigation to viewer happens at ~30s** - Right at the test timeout boundary
+4. **"Crowded" error on viewer reload** - The viewer tries to re-establish connection and gets a "crowded" error
+
+**Solutions needed:**
+1. Reduce dilation timeout to 10 seconds (better UX)
+2. Fix viewer to reuse existing connection instead of reconnecting
+3. Increase test timeout to 60 seconds to accommodate dilation fallback
+
+### Alternative Approaches (not needed now that headed mode works)
+1. **Mock/local relay** - Remove external dependency by testing against local relay
+2. **API-level tests** - Test wormhole connection logic directly without browser
+3. **Real browser via Selenium Grid/BrowserStack** - Cloud browsers with full networking
+
+### Files
+- `tests/integration/test_discovery_site.py` - Playwright-based integration tests
+- `discovery-site/tests/run_full_integration_test.py` - Full integration test script
+- `discovery-site/Makefile` - Make targets for testing
+
+---
+
 ## Notes for Future Sessions
 
 1. **Caddy Plugin**: Implementation is complete. The Caddy listener uses the daemon API for wormhole connections. To test:

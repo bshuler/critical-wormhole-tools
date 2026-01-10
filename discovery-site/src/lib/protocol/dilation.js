@@ -194,13 +194,13 @@ export class DilationManager {
         checkState();
       };
 
-      // Timeout after 30 seconds
+      // Timeout after 10 seconds - faster fallback to undilated connection
       setTimeout(() => {
         if (this.state !== DilationState.CONNECTED) {
           this.setState(DilationState.FAILED);
           reject(new Error('Dilation timeout'));
         }
-      }, 30000);
+      }, 10000);
     });
   }
 
