@@ -113,7 +113,7 @@ class RDPProtocol:
             asyncio.create_task(self._forward_from_rdp())
 
         except asyncio.TimeoutError:
-            error = f"Connection to RDP server timed out"
+            error = "Connection to RDP server timed out"
             self._status(error)
             self._send_message(MSG_CONNECT_FAIL, error.encode())
         except ConnectionRefusedError:
@@ -404,7 +404,7 @@ def rdp(
                     )
                     actual_port = await rdp_proto.run_client(manager, local_port)
 
-                    click.echo(f"RDP tunnel ready!", err=True)
+                    click.echo("RDP tunnel ready!", err=True)
                     click.echo(f"Connect your RDP client to: localhost:{actual_port}", err=True)
                     click.echo("", err=True)
                     click.echo("Example commands:", err=True)

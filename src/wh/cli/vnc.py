@@ -115,7 +115,7 @@ class VNCProtocol:
             asyncio.create_task(self._forward_from_vnc())
 
         except asyncio.TimeoutError:
-            error = f"Connection to VNC server timed out"
+            error = "Connection to VNC server timed out"
             self._status(error)
             self._send_message(MSG_CONNECT_FAIL, error.encode())
         except ConnectionRefusedError:
@@ -405,7 +405,7 @@ def vnc(
                     )
                     actual_port = await vnc_proto.run_client(manager, local_port)
 
-                    click.echo(f"VNC tunnel ready!", err=True)
+                    click.echo("VNC tunnel ready!", err=True)
                     click.echo(f"Connect your VNC viewer to: localhost:{actual_port}", err=True)
                     click.echo("", err=True)
                     click.echo("Example commands:", err=True)

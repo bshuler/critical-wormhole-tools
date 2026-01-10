@@ -21,10 +21,9 @@ Response (JSON):
 """
 
 import json
-import os
 import mimetypes
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class HTTPFileServer:
@@ -86,7 +85,7 @@ class HTTPFileServer:
                 print(f"Error handling request: {e}")
                 try:
                     await self._send_error(500, "Internal Server Error", str(e))
-                except:
+                except Exception:
                     pass
 
     async def _handle_http_request(self, request: dict) -> None:
