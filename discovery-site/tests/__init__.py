@@ -1,0 +1,1 @@
+"""Discovery site integration tests."""

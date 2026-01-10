@@ -776,11 +776,281 @@ function initIndexPage() {
     }
   }
 
-  // Navigate to viewer
-  function navigateToViewer(address, path) {
-    const connectionId = generateConnectionId();
-    registerConnection(connectionId, address);
-    window.location.href = `viewer.html?address=${encodeURIComponent(address)}&connectionId=${encodeURIComponent(connectionId)}&path=${encodeURIComponent(path)}`;
+  // Viewer state
+  let viewerAddress = null;
+  let viewerPath = '/';
+  let sandboxReady = false;
+  let pendingContent = null;
+  const siteStorage = { local: {}, session: {} };
+  let siteCookies = {};
+
+  // Viewer DOM elements (loaded lazily)
+  const viewerContainer = document.getElementById('viewer-container');
+  const loadingEl = document.getElementById('wh-loading');
+  const loadingAddressEl = document.getElementById('wh-loading-address');
+  const errorEl = document.getElementById('wh-error');
+  const errorMessageEl = document.getElementById('wh-error-message');
+  const sandboxEl = document.getElementById('wh-sandbox');
+  const navLoadingEl = document.getElementById('wh-nav-loading');
+  const backBtn = document.getElementById('wh-back-btn');
+
+  // Back button handler
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      hideViewer();
+    });
+  }
+
+  // Show viewer loading
+  function showViewerLoading(address) {
+    document.body.classList.add('viewing');
+    viewerContainer.classList.add('active');
+    loadingEl.classList.add('active');
+    loadingAddressEl.textContent = address;
+    errorEl.classList.remove('active');
+    sandboxEl.classList.remove('active');
+  }
+
+  // Hide viewer loading
+  function hideViewerLoading() {
+    loadingEl.classList.remove('active');
+    navLoadingEl.style.display = 'none';
+  }
+
+  // Show viewer error
+  function showViewerError(message) {
+    hideViewerLoading();
+    sandboxEl.classList.remove('active');
+    errorEl.classList.add('active');
+    errorMessageEl.textContent = message;
+  }
+
+  // Hide viewer and return to discovery
+  function hideViewer() {
+    document.body.classList.remove('viewing');
+    viewerContainer.classList.remove('active');
+    loadingEl.classList.remove('active');
+    errorEl.classList.remove('active');
+    sandboxEl.classList.remove('active');
+    viewerAddress = null;
+    viewerPath = '/';
+
+    // Update URL
+    window.history.pushState({}, '', window.location.pathname);
+  }
+
+  // Display content in sandbox
+  function displayContent(html, path) {
+    hideViewerLoading();
+    errorEl.classList.remove('active');
+    viewerPath = path;
+
+    // Update URL
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.set('address', viewerAddress);
+    newUrl.searchParams.set('path', path);
+    window.history.pushState({ address: viewerAddress, path }, '', newUrl);
+
+    // Show sandbox
+    sandboxEl.classList.add('active');
+
+    // Send content to sandbox
+    const message = {
+      type: 'RENDER',
+      html: html,
+      path: path,
+      address: viewerAddress,
+      storage: siteStorage,
+      cookies: siteCookies
+    };
+
+    if (sandboxReady) {
+      sandboxEl.contentWindow.postMessage(message, '*');
+      console.log('[Viewer] Sent content to sandbox for path:', path);
+    } else {
+      pendingContent = message;
+      console.log('[Viewer] Sandbox not ready, queuing content');
+    }
+  }
+
+  // Fetch resource through wormhole
+  async function fetchViewerResource(path, options = {}) {
+    const response = await fetchOverWormhole(viewerAddress, path, {
+      method: options.method || 'GET',
+      body: options.body || null,
+      headers: options.headers || {}
+    });
+    return {
+      body: response.body || '',
+      status: response.status || 200,
+      statusText: response.statusText || 'OK',
+      headers: response.headers || {},
+      contentType: response.contentType || 'text/html'
+    };
+  }
+
+  // Navigate within viewer
+  async function viewerNavigateTo(path, method = 'GET', body = null) {
+    console.log('[Viewer] Navigating to:', path);
+    navLoadingEl.style.display = 'block';
+    try {
+      const response = await fetchViewerResource(path, { method, body });
+      displayContent(response.body, path);
+    } catch (error) {
+      console.error('[Viewer] Navigation error:', error);
+      showViewerError(error.message);
+    }
+  }
+
+  // Convert data to data URL
+  function createDataUrl(data, contentType) {
+    if (typeof data === 'string' && data.startsWith('data:')) return data;
+    try {
+      return `data:${contentType};base64,${btoa(data)}`;
+    } catch {
+      try {
+        return `data:${contentType};base64,${btoa(unescape(encodeURIComponent(data)))}`;
+      } catch {
+        return data;
+      }
+    }
+  }
+
+  // Handle resource request from sandbox
+  async function handleResourceRequest(data) {
+    const { id, path, method, headers, body, responseType } = data;
+    console.log('[Viewer] Resource request:', path, responseType);
+    try {
+      const response = await fetchViewerResource(path, { method, headers, body });
+      if (responseType === 'blob') {
+        sandboxEl.contentWindow.postMessage({
+          type: 'RESOURCE_RESPONSE',
+          id: id,
+          blobUrl: createDataUrl(response.body, response.contentType),
+          responseType: 'blob'
+        }, '*');
+      } else if (responseType === 'full') {
+        sandboxEl.contentWindow.postMessage({
+          type: 'RESOURCE_RESPONSE',
+          id: id,
+          data: { body: response.body, status: response.status, statusText: response.statusText, headers: response.headers },
+          responseType: 'full'
+        }, '*');
+      } else {
+        sandboxEl.contentWindow.postMessage({
+          type: 'RESOURCE_RESPONSE',
+          id: id,
+          data: response.body,
+          responseType: 'text'
+        }, '*');
+      }
+    } catch (error) {
+      sandboxEl.contentWindow.postMessage({
+        type: 'RESOURCE_RESPONSE',
+        id: id,
+        error: error.message
+      }, '*');
+    }
+  }
+
+  // Handle messages from sandbox
+  window.addEventListener('message', async (event) => {
+    if (!sandboxEl || event.source !== sandboxEl.contentWindow) return;
+    const { type, ...data } = event.data;
+
+    switch (type) {
+      case 'SANDBOX_READY':
+        sandboxReady = true;
+        console.log('[Viewer] Sandbox is ready');
+        if (pendingContent) {
+          sandboxEl.contentWindow.postMessage(pendingContent, '*');
+          pendingContent = null;
+        }
+        break;
+      case 'NAVIGATE':
+        viewerNavigateTo(data.path);
+        break;
+      case 'FORM_SUBMIT':
+        viewerNavigateTo(data.path, data.method, data.data);
+        break;
+      case 'EXTERNAL_LINK':
+        window.open(data.url, '_blank');
+        break;
+      case 'TITLE_CHANGE':
+        document.title = data.title + ' - Wormhole';
+        break;
+      case 'CONTENT_LOADED':
+        console.log('[Viewer] Content loaded for path:', data.path);
+        sandboxEl.contentWindow.scrollTo(0, 0);
+        break;
+      case 'RESOURCE_REQUEST':
+        handleResourceRequest(data);
+        break;
+      case 'STORAGE_SET':
+        if (data.storageType === 'local') siteStorage.local[data.key] = data.value;
+        else siteStorage.session[data.key] = data.value;
+        break;
+      case 'STORAGE_REMOVE':
+        if (data.storageType === 'local') delete siteStorage.local[data.key];
+        else delete siteStorage.session[data.key];
+        break;
+      case 'STORAGE_CLEAR':
+        if (data.storageType === 'local') siteStorage.local = {};
+        else siteStorage.session = {};
+        break;
+      case 'COOKIE_SET':
+        const cookieParts = data.cookie.split(';')[0].split('=');
+        if (cookieParts.length >= 2) {
+          siteCookies[cookieParts[0].trim()] = cookieParts.slice(1).join('=').trim();
+        }
+        break;
+      case 'HISTORY_PUSH':
+        try {
+          const pushUrl = new URL(window.location);
+          pushUrl.searchParams.set('path', data.path);
+          window.history.pushState({ address: viewerAddress, path: data.path, state: data.state }, data.title || '', pushUrl);
+          viewerPath = data.path;
+        } catch (e) { console.warn('[Viewer] pushState error:', e); }
+        break;
+      case 'HISTORY_REPLACE':
+        try {
+          const replaceUrl = new URL(window.location);
+          replaceUrl.searchParams.set('path', data.path);
+          window.history.replaceState({ address: viewerAddress, path: data.path, state: data.state }, data.title || '', replaceUrl);
+          viewerPath = data.path;
+        } catch (e) { console.warn('[Viewer] replaceState error:', e); }
+        break;
+      case 'WH_IFRAME_REQUEST':
+        handleResourceRequest({ id: data.id, path: data.url, method: data.method || 'GET', responseType: 'full' });
+        break;
+    }
+  });
+
+  // Handle browser back/forward
+  window.addEventListener('popstate', (event) => {
+    if (event.state && event.state.address && event.state.path) {
+      if (viewerAddress === event.state.address) {
+        viewerNavigateTo(event.state.path);
+      }
+    } else if (viewerAddress) {
+      hideViewer();
+    }
+  });
+
+  // Navigate to viewer (inline, no page navigation)
+  async function navigateToViewer(address, path) {
+    viewerAddress = address;
+    viewerPath = path;
+
+    showViewerLoading(address);
+
+    try {
+      const response = await fetchViewerResource(path);
+      displayContent(response.body, path);
+    } catch (error) {
+      console.error('[Viewer] Initial load error:', error);
+      showViewerError(error.message);
+    }
   }
 
   // Show status message
