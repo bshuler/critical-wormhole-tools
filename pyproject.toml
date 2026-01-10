@@ -1,6 +1,6 @@
 [project]
 name = "critical_wormhole_tools"
-version = "0.3.0"
+version = "0.4.0"
 description = "Critical Wormhole Tools - Secure network utilities using Magic Wormhole code-based addressing"
 authors = [{name = "Critical Wormhole Team"}]
 license = "MIT"
