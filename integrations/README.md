@@ -33,12 +33,12 @@ These provide:
 
 | Web Server | Type | Status | Description |
 |------------|------|--------|-------------|
-| [Caddy](./caddy/) | Go Plugin | In Progress | Native Caddy module using xcaddy |
-| [Nginx](./nginx/) | C Module | Planned | Native nginx module |
-| [Apache](./apache/) | C Module | Planned | mod_wormhole for Apache |
-| [HAProxy](./haproxy/) | Config | Planned | HAProxy configuration examples |
-| [Traefik](./traefik/) | Go Plugin | Planned | Traefik middleware plugin |
-| [Squid](./squid/) | Config | Planned | Squid proxy configuration |
+| [Caddy](./caddy/) | Go Plugin | Scaffold | Native Caddy module with Caddyfile support |
+| [Nginx](./nginx/) | Config | Docs | Reverse proxy configuration examples |
+| [Apache](./apache/) | Config | Docs | mod_proxy configuration examples |
+| [HAProxy](./haproxy/) | Config | Docs | Load balancing configuration examples |
+| [Traefik](./traefik/) | Config | Docs | Docker/Kubernetes configuration examples |
+| [Squid](./squid/) | Config | Docs | Caching proxy configuration examples |
 
 ## Quick Start with Reverse Proxy
 

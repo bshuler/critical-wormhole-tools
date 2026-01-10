@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/caddyserver/caddy/v2"
 	"go.uber.org/zap"
@@ -216,22 +217,25 @@ func (c *WormholeConn) RemoteAddr() net.Addr {
 }
 
 // SetDeadline sets the read and write deadlines.
-func (c *WormholeConn) SetDeadline(t interface{}) error {
+func (c *WormholeConn) SetDeadline(t time.Time) error {
 	// TODO: Implement deadlines
 	return nil
 }
 
 // SetReadDeadline sets the deadline for future Read calls.
-func (c *WormholeConn) SetReadDeadline(t interface{}) error {
+func (c *WormholeConn) SetReadDeadline(t time.Time) error {
 	// TODO: Implement read deadline
 	return nil
 }
 
 // SetWriteDeadline sets the deadline for future Write calls.
-func (c *WormholeConn) SetWriteDeadline(t interface{}) error {
+func (c *WormholeConn) SetWriteDeadline(t time.Time) error {
 	// TODO: Implement write deadline
 	return nil
 }
 
-// Interface guard
-var _ net.Listener = (*WormholeListener)(nil)
+// Interface guards
+var (
+	_ net.Listener = (*WormholeListener)(nil)
+	_ net.Conn     = (*WormholeConn)(nil)
+)
