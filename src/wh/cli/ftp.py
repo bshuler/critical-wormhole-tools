@@ -9,7 +9,7 @@ import click
 import os
 import struct
 from typing import Optional, List, Dict, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 import json
 
@@ -655,7 +655,7 @@ def ftp(
                                         size = f["size"] if not f["is_dir"] else ""
                                         click.echo(f"{ftype} {size:>10} {f['name']}")
                                 except json.JSONDecodeError:
-                                    click.echo(f"Error parsing directory listing")
+                                    click.echo("Error parsing directory listing")
                             else:
                                 click.echo(f"{code_resp} {msg}")
 

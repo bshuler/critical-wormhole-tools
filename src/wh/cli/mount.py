@@ -8,11 +8,11 @@ import asyncio
 import click
 import os
 import sys
-import stat
+# stat is imported dynamically when fuse is available
 import errno
 import struct
 import json
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, List
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -465,7 +465,7 @@ class MountProtocol:
 def check_fuse_available() -> bool:
     """Check if FUSE is available."""
     try:
-        import fuse
+        import fuse  # noqa: F401 - imported for availability check
         return True
     except ImportError:
         return False
