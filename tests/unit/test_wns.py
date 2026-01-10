@@ -501,6 +501,106 @@ class TestWNSIdentityStoreAdditional:
         assert identities == []
 
 
+class TestWNSIdentityStoreDefaultIdentity:
+    """Tests for default identity functionality."""
+
+    def test_get_default_no_identities(self, tmp_path):
+        """Test get_default_identity with no identities."""
+        store = WNSIdentityStore(base_path=tmp_path)
+        result = store.get_default_identity()
+        assert result is None
+
+    def test_get_default_returns_first_when_not_set(self, tmp_path):
+        """Test get_default_identity returns first identity when not configured."""
+        store = WNSIdentityStore(base_path=tmp_path)
+
+        # Create two identities
+        id1 = WNSIdentity.generate(name="first")
+        id2 = WNSIdentity.generate(name="second")
+        store.save_identity(id1)
+        store.save_identity(id2)
+
+        # Should return first (or any - order not guaranteed)
+        default = store.get_default_identity()
+        assert default is not None
+        assert default.address in [id1.address, id2.address]
+
+    def test_set_default_identity(self, tmp_path):
+        """Test setting a default identity."""
+        store = WNSIdentityStore(base_path=tmp_path)
+
+        # Create identities
+        id1 = WNSIdentity.generate(name="first")
+        id2 = WNSIdentity.generate(name="second")
+        store.save_identity(id1)
+        store.save_identity(id2)
+
+        # Set second as default
+        result = store.set_default_identity(id2.address)
+        assert result is True
+
+        # Should return second
+        default = store.get_default_identity()
+        assert default.address == id2.address
+        assert default.name == "second"
+
+    def test_set_default_nonexistent(self, tmp_path):
+        """Test setting nonexistent identity as default fails."""
+        store = WNSIdentityStore(base_path=tmp_path)
+        result = store.set_default_identity("nonexistent")
+        assert result is False
+
+    def test_clear_default_identity(self, tmp_path):
+        """Test clearing the default identity setting."""
+        store = WNSIdentityStore(base_path=tmp_path)
+
+        # Create and set default
+        identity = WNSIdentity.generate(name="test")
+        store.save_identity(identity)
+        store.set_default_identity(identity.address)
+
+        # Verify it's set
+        assert store.get_default_identity_address() == identity.address
+
+        # Clear it
+        store.clear_default_identity()
+        assert store.get_default_identity_address() is None
+
+        # Should still return identity (falls back to first)
+        default = store.get_default_identity()
+        assert default.address == identity.address
+
+    def test_get_default_identity_address(self, tmp_path):
+        """Test get_default_identity_address method."""
+        store = WNSIdentityStore(base_path=tmp_path)
+
+        # Initially none
+        assert store.get_default_identity_address() is None
+
+        # Create and set
+        identity = WNSIdentity.generate()
+        store.save_identity(identity)
+        store.set_default_identity(identity.address)
+
+        assert store.get_default_identity_address() == identity.address
+
+    def test_default_persists(self, tmp_path):
+        """Test that default identity setting persists across store instances."""
+        identity = WNSIdentity.generate(name="persistent")
+
+        # Create first store instance and set default
+        store1 = WNSIdentityStore(base_path=tmp_path)
+        store1.save_identity(identity)
+        store1.set_default_identity(identity.address)
+
+        # Create second store instance
+        store2 = WNSIdentityStore(base_path=tmp_path)
+        default = store2.get_default_identity()
+
+        assert default.address == identity.address
+        assert default.name == "persistent"
+
+
 class TestNameClaimAdditional:
     """Additional tests for NameClaim."""
 

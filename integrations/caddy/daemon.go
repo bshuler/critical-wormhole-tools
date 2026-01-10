@@ -54,6 +54,27 @@ type ConnectResponse struct {
 	Error        string `json:"error,omitempty"`
 }
 
+// ListenRequest represents a request to start a wormhole listener.
+type ListenRequest struct {
+	Protocol string `json:"protocol,omitempty"`
+	Identity string `json:"identity,omitempty"`
+}
+
+// ListenResponse represents a response from starting a listener.
+type ListenResponse struct {
+	ListenerID string `json:"listener_id"`
+	Code       string `json:"code"`
+	Status     string `json:"status"`
+	Error      string `json:"error,omitempty"`
+}
+
+// AcceptResponse represents a response from accepting a connection.
+type AcceptResponse struct {
+	ConnectionID string `json:"connection_id"`
+	Status       string `json:"status"`
+	Error        string `json:"error,omitempty"`
+}
+
 // NewDaemonClient creates a new daemon client with default settings.
 func NewDaemonClient() *DaemonClient {
 	return &DaemonClient{
@@ -240,4 +261,173 @@ func (c *DaemonClient) WaitForDaemon(ctx context.Context, timeout time.Duration)
 	}
 
 	return fmt.Errorf("daemon did not become available within %v", timeout)
+}
+
+// Listen starts a new wormhole listener and returns the allocated code.
+func (c *DaemonClient) Listen(ctx context.Context, req *ListenRequest) (*ListenResponse, error) {
+	if req == nil {
+		req = &ListenRequest{}
+	}
+
+	resp, err := c.post(ctx, "/listen", req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start listener: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result ListenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode listen response: %w", err)
+	}
+
+	if result.Error != "" {
+		return nil, fmt.Errorf("listen error: %s", result.Error)
+	}
+
+	return &result, nil
+}
+
+// Accept waits for an incoming connection on a listener.
+// timeout is in seconds. Returns nil ConnectionID on timeout.
+func (c *DaemonClient) Accept(ctx context.Context, listenerID string, timeout time.Duration) (*AcceptResponse, error) {
+	url := fmt.Sprintf("%s/accept/%s?timeout=%d", c.BaseURL, listenerID, int(timeout.Seconds()))
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create accept request: %w", err)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to accept connection: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("listener not found")
+	}
+	if resp.StatusCode == http.StatusGone {
+		return nil, fmt.Errorf("listener closed")
+	}
+
+	var result AcceptResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode accept response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// Send sends data through an established connection.
+func (c *DaemonClient) Send(ctx context.Context, connID string, data []byte) (int, error) {
+	url := fmt.Sprintf("%s/send/%s", c.BaseURL, connID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return 0, fmt.Errorf("failed to create send request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("failed to send data: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return 0, fmt.Errorf("connection not found")
+	}
+	if resp.StatusCode == http.StatusGone {
+		return 0, fmt.Errorf("connection closed")
+	}
+
+	var result struct {
+		BytesSent int    `json:"bytes_sent"`
+		Error     string `json:"error,omitempty"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("failed to decode send response: %w", err)
+	}
+
+	if result.Error != "" {
+		return 0, fmt.Errorf("send error: %s", result.Error)
+	}
+
+	return result.BytesSent, nil
+}
+
+// Recv receives data from an established connection.
+// Returns io.EOF when connection is closed.
+func (c *DaemonClient) Recv(ctx context.Context, connID string, timeout time.Duration, maxBytes int) ([]byte, error) {
+	url := fmt.Sprintf("%s/recv/%s?timeout=%d&max_bytes=%d", c.BaseURL, connID, int(timeout.Seconds()), maxBytes)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create recv request: %w", err)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive data: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("connection not found")
+	}
+	if resp.StatusCode == http.StatusGone {
+		return nil, fmt.Errorf("connection closed")
+	}
+	if resp.StatusCode == http.StatusNoContent {
+		return nil, io.EOF
+	}
+	if resp.StatusCode == http.StatusRequestTimeout {
+		return nil, nil // Timeout, no data
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+// CloseListener closes a listener and all its connections.
+func (c *DaemonClient) CloseListener(ctx context.Context, listenerID string) error {
+	url := fmt.Sprintf("%s/listener/%s", c.BaseURL, listenerID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create close listener request: %w", err)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to close listener: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil // Already closed
+	}
+
+	return nil
+}
+
+// CloseConnection closes a specific connection.
+func (c *DaemonClient) CloseConnection(ctx context.Context, connID string) error {
+	url := fmt.Sprintf("%s/connection/%s", c.BaseURL, connID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create close connection request: %w", err)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to close connection: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil // Already closed
+	}
+
+	return nil
 }

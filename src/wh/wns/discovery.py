@@ -15,6 +15,7 @@ Supports multiple name types:
 Clients use the Discovery class which tries backends in order.
 """
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -32,7 +33,6 @@ from wh.wns.names import (
     NameClaim,
     NameClaimStore,
     parse_global_name,
-    name_to_dht_key,
 )
 
 
@@ -67,7 +67,7 @@ class DiscoveryBackend(ABC):
 
 
 class DHTDiscovery(DiscoveryBackend):
-    """Discovery via Kademlia DHT."""
+    """Discovery via BitTorrent DHT."""
 
     def __init__(self, bootstrap_nodes: Optional[List[tuple]] = None):
         from wh.wns.dht import WNSDHTClient
@@ -86,29 +86,76 @@ class DHTDiscovery(DiscoveryBackend):
         """
         Look up a global name claim in the DHT.
 
+        Uses the same peer discovery mechanism as code advertisements:
+        1. Hash the name to get an info_hash
+        2. Query DHT for peers serving that name
+        3. Fetch the signed claim from each peer
+
         Args:
             name: The global name to look up
 
         Returns:
             NameClaim if found and valid, None otherwise
         """
-        if not self._client._running or not self._client._server:
+        if not self._client._running or not self._client._dht:
             return None
 
-        key = name_to_dht_key(name)
-        value = await self._client._server.get(key)
+        from wh.wns.dht import wns_address_to_info_hash
 
-        if value is None:
+        # Use name as the "address" for DHT lookup
+        # This allows us to reuse the same peer discovery mechanism
+        info_hash = wns_address_to_info_hash(f"name:{name}")
+
+        # Query DHT for peers
+        peers = await self._client._dht.get_peers(info_hash)
+
+        if not peers:
             return None
 
-        try:
-            claim = NameClaim.from_json(value)
-            if claim.verify(expected_name=name) and not claim.is_expired():
-                return claim
-        except Exception as e:
-            logger.debug(f"Failed to parse name claim for {name}: {e}")
+        # Try each peer
+        for peer_ip, peer_port in peers:
+            try:
+                claim = await self._fetch_name_claim(peer_ip, peer_port, name)
+                if claim and claim.verify(expected_name=name) and not claim.is_expired():
+                    return claim
+            except Exception as e:
+                logger.debug(f"Failed to fetch name claim from {peer_ip}:{peer_port}: {e}")
+                continue
 
         return None
+
+    async def _fetch_name_claim(
+        self,
+        ip: str,
+        port: int,
+        name: str
+    ) -> Optional[NameClaim]:
+        """Fetch a name claim from a peer."""
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(ip, port),
+                timeout=5.0
+            )
+
+            try:
+                # Request the name claim
+                writer.write(f"GET_CLAIM {name}\n".encode())
+                await writer.drain()
+
+                response = await asyncio.wait_for(reader.readline(), timeout=5.0)
+                response_str = response.decode("utf-8").strip()
+
+                if response_str in ("NOT_FOUND", "") or response_str.startswith("ERROR"):
+                    return None
+
+                return NameClaim.from_json(response_str)
+
+            finally:
+                writer.close()
+                await writer.wait_closed()
+
+        except Exception:
+            return None
 
 
 class FileDiscovery(DiscoveryBackend):

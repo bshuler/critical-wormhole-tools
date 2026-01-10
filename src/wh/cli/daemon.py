@@ -1,23 +1,59 @@
 """
-wh daemon - Local daemon for browser extension integration.
+wh daemon - Local daemon for browser extension and Caddy integration.
 
-Provides HTTP API for the browser extension to:
-- Check daemon status
-- Resolve WNS addresses
-- Proxy HTTP requests through wormhole
+Provides HTTP API for:
+- Browser extension: status, resolve, browse
+- Caddy plugin: listen, accept, send, recv
+
+Endpoints:
+- GET /status - Daemon status
+- POST /resolve - Resolve WNS address to code
+- POST /connect - Establish wormhole connection
+- GET /browse/<url> - Proxy HTTP request through wormhole
+- POST /listen - Start a wormhole listener (returns code)
+- GET /accept/<listener_id> - Wait for incoming connection
+- WebSocket /ws/<conn_id> - Bidirectional data transfer
 """
 
 import asyncio
 import click
-from typing import Dict, Any
+import uuid
+from typing import Dict, Any, Optional
 from functools import wraps
+from dataclasses import dataclass, field
+from asyncio import Queue
 
 # Import wh first to ensure reactor is set up
 import wh  # noqa: F401
 
 
+@dataclass
+class ListenerState:
+    """State for an active wormhole listener."""
+
+    id: str
+    code: str
+    manager: Any  # WormholeManager
+    protocol_name: str = "wh-http"
+    connections: Queue = field(default_factory=Queue)
+    closed: bool = False
+
+
+@dataclass
+class ConnectionState:
+    """State for an established wormhole connection."""
+
+    id: str
+    listener_id: str
+    protocol: Any  # Twisted Protocol
+    read_queue: Queue = field(default_factory=Queue)
+    write_queue: Queue = field(default_factory=Queue)
+    closed: bool = False
+
+
 def async_command(f):
     """Decorator to run async Click commands."""
+
     @wraps(f)
     def wrapper(*args, **kwargs):
         from twisted.internet import reactor
@@ -43,19 +79,27 @@ def async_command(f):
 
 class WormholeDaemon:
     """
-    Local HTTP daemon for browser extension communication.
+    Local HTTP daemon for browser extension and Caddy plugin communication.
 
     Provides endpoints:
     - GET /status - Daemon status
     - POST /resolve - Resolve WNS address to code
     - POST /connect - Establish wormhole connection
     - GET /browse/<url> - Proxy HTTP request through wormhole
+    - POST /listen - Start a wormhole listener (returns code)
+    - GET /accept/<listener_id> - Wait for incoming connection (long-poll)
+    - POST /send/<conn_id> - Send data through connection
+    - POST /recv/<conn_id> - Receive data from connection
+    - DELETE /listener/<listener_id> - Close a listener
+    - DELETE /connection/<conn_id> - Close a connection
     """
 
     def __init__(self, port: int = 9475, verbose: bool = False):
         self.port = port
         self.verbose = verbose
-        self.connections: Dict[str, Any] = {}
+        self.connections: Dict[str, Any] = {}  # Legacy connection tracking
+        self.listeners: Dict[str, ListenerState] = {}  # Active listeners
+        self.active_connections: Dict[str, ConnectionState] = {}  # Active connections
         self.server = None
 
     async def start(self):
@@ -63,11 +107,21 @@ class WormholeDaemon:
         from aiohttp import web
 
         app = web.Application()
+        # Browser extension endpoints
         app.router.add_get('/status', self.handle_status)
         app.router.add_post('/resolve', self.handle_resolve)
         app.router.add_post('/connect', self.handle_connect)
         app.router.add_get('/browse/{url:.*}', self.handle_browse)
         app.router.add_get('/config/relays', self.handle_get_relays)
+
+        # Caddy plugin listener endpoints
+        app.router.add_post('/listen', self.handle_listen)
+        app.router.add_get('/accept/{listener_id}', self.handle_accept)
+        app.router.add_post('/send/{conn_id}', self.handle_send)
+        app.router.add_post('/recv/{conn_id}', self.handle_recv)
+        app.router.add_delete('/listener/{listener_id}', self.handle_close_listener)
+        app.router.add_delete('/connection/{conn_id}', self.handle_close_connection)
+
         app.router.add_options('/{path:.*}', self.handle_cors)
 
         # Add CORS middleware
@@ -331,6 +385,380 @@ class WormholeDaemon:
                 {'error': str(e)},
                 status=500
             )
+
+    # =========================================================================
+    # Caddy Plugin Listener Endpoints
+    # =========================================================================
+
+    async def handle_listen(self, request):
+        """
+        Start a new wormhole listener.
+
+        Creates a wormhole, allocates a code, dilates for streaming,
+        and returns the listener ID and code for clients to connect.
+
+        Request body (optional):
+            {
+                "protocol": "wh-http",  // Protocol name for subchannel
+                "identity": "path/to/identity"  // Optional WNS identity
+            }
+
+        Response:
+            {
+                "listener_id": "uuid",
+                "code": "7-guitar-sunset",
+                "status": "listening"
+            }
+        """
+        from aiohttp import web
+        from wh.core.wormhole_manager import WormholeManager
+
+        try:
+            data = await request.json() if request.body_exists else {}
+            protocol_name = data.get('protocol', 'wh-http')
+
+            # Create wormhole manager
+            manager = WormholeManager.from_relay_config()
+
+            # Allocate a code
+            code = await manager.create_and_allocate_code()
+
+            # Generate listener ID
+            listener_id = str(uuid.uuid4())
+
+            # Create listener state
+            listener = ListenerState(
+                id=listener_id,
+                code=code,
+                manager=manager,
+                protocol_name=protocol_name,
+            )
+            self.listeners[listener_id] = listener
+
+            if self.verbose:
+                click.echo(f"Listener {listener_id} created with code {code}")
+
+            # Start background task to dilate and accept connections
+            asyncio.create_task(self._listener_accept_loop(listener))
+
+            return web.json_response({
+                'listener_id': listener_id,
+                'code': code,
+                'status': 'listening',
+            })
+
+        except Exception as e:
+            return web.json_response(
+                {'error': str(e)},
+                status=500
+            )
+
+    async def _listener_accept_loop(self, listener: ListenerState):
+        """
+        Background task that dilates the wormhole and accepts connections.
+
+        This runs continuously, accepting incoming connections and adding
+        them to the listener's connection queue.
+        """
+        from twisted.internet.protocol import Factory, Protocol
+
+        try:
+            # Wait for peer to connect and dilate
+            await listener.manager.dilate()
+
+            if self.verbose:
+                click.echo(f"Listener {listener.id} dilated, ready for connections")
+
+            # Get the listener endpoint for our protocol
+            endpoint = listener.manager.listener_for(listener.protocol_name)
+
+            # Create a protocol factory that bridges to our async queues
+            daemon = self
+
+            class BridgeProtocol(Protocol):
+                """Protocol that bridges Twisted to asyncio queues."""
+
+                def __init__(self):
+                    self.conn_id = str(uuid.uuid4())
+                    self.conn_state: Optional[ConnectionState] = None
+
+                def connectionMade(self):
+                    # Create connection state
+                    self.conn_state = ConnectionState(
+                        id=self.conn_id,
+                        listener_id=listener.id,
+                        protocol=self,
+                    )
+                    daemon.active_connections[self.conn_id] = self.conn_state
+
+                    # Notify listener of new connection
+                    asyncio.get_event_loop().call_soon_threadsafe(
+                        listener.connections.put_nowait,
+                        self.conn_id
+                    )
+
+                    if daemon.verbose:
+                        click.echo(f"Connection {self.conn_id} established")
+
+                def dataReceived(self, data: bytes):
+                    if self.conn_state:
+                        asyncio.get_event_loop().call_soon_threadsafe(
+                            self.conn_state.read_queue.put_nowait,
+                            data
+                        )
+
+                def connectionLost(self, reason):
+                    if self.conn_state:
+                        self.conn_state.closed = True
+                        # Signal EOF
+                        asyncio.get_event_loop().call_soon_threadsafe(
+                            self.conn_state.read_queue.put_nowait,
+                            None
+                        )
+
+            class BridgeFactory(Factory):
+                def buildProtocol(self, addr):
+                    return BridgeProtocol()
+
+            # Start listening with Twisted
+            def listen_callback(port):
+                if daemon.verbose:
+                    click.echo(f"Listener {listener.id} accepting on {port}")
+
+            def listen_errback(failure):
+                click.echo(f"Listener {listener.id} error: {failure}")
+                listener.closed = True
+
+            d = endpoint.listen(BridgeFactory())
+            d.addCallback(listen_callback)
+            d.addErrback(listen_errback)
+
+            # Keep running until closed
+            while not listener.closed:
+                await asyncio.sleep(1)
+
+        except Exception as e:
+            click.echo(f"Listener {listener.id} error: {e}")
+            listener.closed = True
+
+    async def handle_accept(self, request):
+        """
+        Wait for an incoming connection on a listener.
+
+        This is a long-polling endpoint that blocks until a connection
+        is available or timeout is reached.
+
+        Response:
+            {
+                "connection_id": "uuid",
+                "status": "connected"
+            }
+        """
+        from aiohttp import web
+
+        listener_id = request.match_info['listener_id']
+        timeout = float(request.query.get('timeout', '30'))
+
+        listener = self.listeners.get(listener_id)
+        if not listener:
+            return web.json_response(
+                {'error': 'Listener not found'},
+                status=404
+            )
+
+        if listener.closed:
+            return web.json_response(
+                {'error': 'Listener closed'},
+                status=410
+            )
+
+        try:
+            # Wait for a connection with timeout
+            conn_id = await asyncio.wait_for(
+                listener.connections.get(),
+                timeout=timeout
+            )
+
+            return web.json_response({
+                'connection_id': conn_id,
+                'status': 'connected',
+            })
+
+        except asyncio.TimeoutError:
+            return web.json_response({
+                'connection_id': None,
+                'status': 'timeout',
+            })
+
+    async def handle_send(self, request):
+        """
+        Send data through an established connection.
+
+        Request body: raw bytes to send
+        Response: {"bytes_sent": N}
+        """
+        from aiohttp import web
+
+        conn_id = request.match_info['conn_id']
+
+        conn = self.active_connections.get(conn_id)
+        if not conn:
+            return web.json_response(
+                {'error': 'Connection not found'},
+                status=404
+            )
+
+        if conn.closed:
+            return web.json_response(
+                {'error': 'Connection closed'},
+                status=410
+            )
+
+        try:
+            data = await request.read()
+
+            # Write through Twisted protocol (thread-safe)
+            from twisted.internet import reactor
+            reactor.callFromThread(conn.protocol.transport.write, data)
+
+            return web.json_response({
+                'bytes_sent': len(data),
+            })
+
+        except Exception as e:
+            return web.json_response(
+                {'error': str(e)},
+                status=500
+            )
+
+    async def handle_recv(self, request):
+        """
+        Receive data from an established connection.
+
+        Query params:
+            timeout: Max seconds to wait (default 30)
+            max_bytes: Max bytes to return (default 65536)
+
+        Response: raw bytes received
+        """
+        from aiohttp import web
+
+        conn_id = request.match_info['conn_id']
+        timeout = float(request.query.get('timeout', '30'))
+        max_bytes = int(request.query.get('max_bytes', '65536'))
+
+        conn = self.active_connections.get(conn_id)
+        if not conn:
+            return web.json_response(
+                {'error': 'Connection not found'},
+                status=404
+            )
+
+        if conn.closed:
+            return web.json_response(
+                {'error': 'Connection closed'},
+                status=410
+            )
+
+        try:
+            # Wait for data with timeout
+            data = await asyncio.wait_for(
+                conn.read_queue.get(),
+                timeout=timeout
+            )
+
+            if data is None:
+                # EOF
+                return web.Response(
+                    body=b'',
+                    status=204,  # No Content = EOF
+                )
+
+            # Truncate if needed
+            if len(data) > max_bytes:
+                # Put remainder back
+                remainder = data[max_bytes:]
+                data = data[:max_bytes]
+                await conn.read_queue.put(remainder)
+
+            return web.Response(
+                body=data,
+                content_type='application/octet-stream',
+            )
+
+        except asyncio.TimeoutError:
+            return web.Response(
+                body=b'',
+                status=408,  # Request Timeout
+            )
+
+    async def handle_close_listener(self, request):
+        """Close a listener and all its connections."""
+        from aiohttp import web
+
+        listener_id = request.match_info['listener_id']
+
+        listener = self.listeners.get(listener_id)
+        if not listener:
+            return web.json_response(
+                {'error': 'Listener not found'},
+                status=404
+            )
+
+        # Mark as closed
+        listener.closed = True
+
+        # Close the wormhole
+        try:
+            await listener.manager.close()
+        except Exception:
+            pass
+
+        # Remove from tracking
+        del self.listeners[listener_id]
+
+        # Close all associated connections
+        for conn_id, conn in list(self.active_connections.items()):
+            if conn.listener_id == listener_id:
+                conn.closed = True
+                try:
+                    conn.protocol.transport.loseConnection()
+                except Exception:
+                    pass
+                del self.active_connections[conn_id]
+
+        return web.json_response({
+            'status': 'closed',
+        })
+
+    async def handle_close_connection(self, request):
+        """Close a specific connection."""
+        from aiohttp import web
+
+        conn_id = request.match_info['conn_id']
+
+        conn = self.active_connections.get(conn_id)
+        if not conn:
+            return web.json_response(
+                {'error': 'Connection not found'},
+                status=404
+            )
+
+        # Mark as closed
+        conn.closed = True
+
+        # Close the transport
+        try:
+            conn.protocol.transport.loseConnection()
+        except Exception:
+            pass
+
+        # Remove from tracking
+        del self.active_connections[conn_id]
+
+        return web.json_response({
+            'status': 'closed',
+        })
 
 
 @click.group("daemon")

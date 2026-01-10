@@ -73,8 +73,14 @@ class TestDiscovery:
     async def test_start_stop(self):
         """Test starting and stopping discovery."""
         from wh.wns.discovery import Discovery
+        from unittest.mock import patch, AsyncMock
 
         discovery = Discovery()
+
+        # Mock the DHTDiscovery to avoid real network operations
+        for backend in discovery._backends:
+            backend.start = AsyncMock()
+            backend.stop = AsyncMock()
 
         await discovery.start()
         assert discovery._started is True
@@ -86,26 +92,40 @@ class TestDiscovery:
     async def test_context_manager(self):
         """Test Discovery as async context manager."""
         from wh.wns.discovery import Discovery
+        from unittest.mock import AsyncMock
 
-        async with Discovery() as discovery:
+        discovery = Discovery()
+
+        # Mock backends to avoid real network operations
+        for backend in discovery._backends:
+            backend.start = AsyncMock()
+            backend.stop = AsyncMock()
+
+        async with discovery:
             assert discovery._started is True
 
         assert discovery._started is False
 
     @pytest.mark.asyncio
     async def test_lookup_not_started(self):
-        """Test lookup before start raises or returns None."""
+        """Test lookup auto-starts and returns None when address not found."""
         from wh.wns.discovery import Discovery
+        from unittest.mock import AsyncMock
 
         discovery = Discovery()
-        # Should handle gracefully (return None or raise)
-        try:
-            result = await discovery.lookup("abc123")
-            # If it doesn't raise, result should be None
-            assert result is None
-        except RuntimeError:
-            # It's also acceptable to raise an error
-            pass
+
+        # Mock backends to avoid real network operations
+        for backend in discovery._backends:
+            backend.start = AsyncMock()
+            backend.stop = AsyncMock()
+            backend.lookup = AsyncMock(return_value=None)
+
+        # lookup() should auto-start and return None for non-existent address
+        result = await discovery.lookup("abc123")
+        assert result is None
+        assert discovery._started is True
+
+        await discovery.stop()
 
 
 class TestWormholeCodeDetection:

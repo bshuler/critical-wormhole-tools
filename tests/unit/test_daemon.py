@@ -247,3 +247,246 @@ class TestDaemonStatusResponse:
         assert body["port"] == 9999
         assert "version" in body
         assert "connections" in body
+
+
+class TestDaemonListenerState:
+    """Tests for ListenerState and ConnectionState dataclasses."""
+
+    def test_listener_state_creation(self):
+        """Test ListenerState can be created."""
+        from wh.cli.daemon import ListenerState
+
+        listener = ListenerState(
+            id="test-id",
+            code="7-guitar-sunset",
+            manager=MagicMock(),
+            protocol_name="wh-http",
+        )
+
+        assert listener.id == "test-id"
+        assert listener.code == "7-guitar-sunset"
+        assert listener.protocol_name == "wh-http"
+        assert listener.closed is False
+        assert listener.connections is not None
+
+    def test_connection_state_creation(self):
+        """Test ConnectionState can be created."""
+        from wh.cli.daemon import ConnectionState
+
+        conn = ConnectionState(
+            id="conn-id",
+            listener_id="listener-id",
+            protocol=MagicMock(),
+        )
+
+        assert conn.id == "conn-id"
+        assert conn.listener_id == "listener-id"
+        assert conn.closed is False
+        assert conn.read_queue is not None
+        assert conn.write_queue is not None
+
+
+class TestDaemonListenerTracking:
+    """Tests for daemon listener/connection tracking."""
+
+    def test_listeners_dict_initialized(self):
+        """Test listeners dictionary is initialized."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        assert daemon.listeners == {}
+        assert isinstance(daemon.listeners, dict)
+
+    def test_active_connections_dict_initialized(self):
+        """Test active_connections dictionary is initialized."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        assert daemon.active_connections == {}
+        assert isinstance(daemon.active_connections, dict)
+
+
+class TestDaemonListenHandler:
+    """Tests for daemon /listen endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_handle_listen_exception(self):
+        """Test listen handles exceptions."""
+        from wh.cli.daemon import WormholeDaemon
+        from unittest.mock import AsyncMock
+
+        daemon = WormholeDaemon()
+
+        # Mock request that causes WormholeManager to fail
+        request = MagicMock()
+        request.body_exists = True
+        request.json = AsyncMock(return_value={"protocol": "test"})
+
+        # Patch the import path where WormholeManager is used
+        with patch("wh.core.wormhole_manager.WormholeManager") as mock_manager:
+            mock_manager.from_relay_config.side_effect = Exception("Manager error")
+
+            response = await daemon.handle_listen(request)
+
+            assert response.status == 500
+
+
+class TestDaemonAcceptHandler:
+    """Tests for daemon /accept endpoint."""
+
+    @pytest.mark.asyncio
+    async def test_handle_accept_listener_not_found(self):
+        """Test accept returns 404 for unknown listener."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        request = MagicMock()
+        request.match_info = {"listener_id": "nonexistent"}
+        request.query = {"timeout": "1"}
+
+        response = await daemon.handle_accept(request)
+
+        assert response.status == 404
+
+    @pytest.mark.asyncio
+    async def test_handle_accept_listener_closed(self):
+        """Test accept returns 410 for closed listener."""
+        from wh.cli.daemon import WormholeDaemon, ListenerState
+
+        daemon = WormholeDaemon()
+
+        # Add a closed listener
+        listener = ListenerState(
+            id="closed-listener",
+            code="test-code",
+            manager=MagicMock(),
+        )
+        listener.closed = True
+        daemon.listeners["closed-listener"] = listener
+
+        request = MagicMock()
+        request.match_info = {"listener_id": "closed-listener"}
+        request.query = {"timeout": "1"}
+
+        response = await daemon.handle_accept(request)
+
+        assert response.status == 410
+
+
+class TestDaemonSendRecvHandlers:
+    """Tests for daemon /send and /recv endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_handle_send_connection_not_found(self):
+        """Test send returns 404 for unknown connection."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        request = MagicMock()
+        request.match_info = {"conn_id": "nonexistent"}
+
+        response = await daemon.handle_send(request)
+
+        assert response.status == 404
+
+    @pytest.mark.asyncio
+    async def test_handle_recv_connection_not_found(self):
+        """Test recv returns 404 for unknown connection."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        request = MagicMock()
+        request.match_info = {"conn_id": "nonexistent"}
+        request.query = {"timeout": "1", "max_bytes": "1024"}
+
+        response = await daemon.handle_recv(request)
+
+        assert response.status == 404
+
+    @pytest.mark.asyncio
+    async def test_handle_send_connection_closed(self):
+        """Test send returns 410 for closed connection."""
+        from wh.cli.daemon import WormholeDaemon, ConnectionState
+
+        daemon = WormholeDaemon()
+
+        # Add a closed connection
+        conn = ConnectionState(
+            id="closed-conn",
+            listener_id="listener",
+            protocol=MagicMock(),
+        )
+        conn.closed = True
+        daemon.active_connections["closed-conn"] = conn
+
+        request = MagicMock()
+        request.match_info = {"conn_id": "closed-conn"}
+
+        response = await daemon.handle_send(request)
+
+        assert response.status == 410
+
+
+class TestDaemonCloseHandlers:
+    """Tests for daemon close endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_handle_close_listener_not_found(self):
+        """Test close listener returns 404 for unknown listener."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        request = MagicMock()
+        request.match_info = {"listener_id": "nonexistent"}
+
+        response = await daemon.handle_close_listener(request)
+
+        assert response.status == 404
+
+    @pytest.mark.asyncio
+    async def test_handle_close_connection_not_found(self):
+        """Test close connection returns 404 for unknown connection."""
+        from wh.cli.daemon import WormholeDaemon
+
+        daemon = WormholeDaemon()
+
+        request = MagicMock()
+        request.match_info = {"conn_id": "nonexistent"}
+
+        response = await daemon.handle_close_connection(request)
+
+        assert response.status == 404
+
+    @pytest.mark.asyncio
+    async def test_handle_close_connection_success(self):
+        """Test close connection succeeds for valid connection."""
+        from wh.cli.daemon import WormholeDaemon, ConnectionState
+
+        daemon = WormholeDaemon()
+
+        # Create a mock protocol with transport
+        mock_transport = MagicMock()
+        mock_protocol = MagicMock()
+        mock_protocol.transport = mock_transport
+
+        conn = ConnectionState(
+            id="test-conn",
+            listener_id="listener",
+            protocol=mock_protocol,
+        )
+        daemon.active_connections["test-conn"] = conn
+
+        request = MagicMock()
+        request.match_info = {"conn_id": "test-conn"}
+
+        response = await daemon.handle_close_connection(request)
+
+        assert response.status == 200
+        assert "test-conn" not in daemon.active_connections
+        mock_transport.loseConnection.assert_called_once()

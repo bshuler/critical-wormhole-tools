@@ -94,12 +94,14 @@ def identity_list() -> None:
     """
     List all stored WNS identities.
 
+    The default identity is marked with an asterisk (*).
+
     \b
     Example:
         $ wh identity list
-        ADDRESS                      NAME
-        abc123def456ghijklmnopqrstuv my-server
-        xyz789abc123defghijklmnopqrs (unnamed)
+          ADDRESS                      NAME
+        * abc123def456ghijklmnopqrstuv my-server (default)
+          xyz789abc123defghijklmnopqrs work-server
     """
     store = WNSIdentityStore()
     identities = store.list_identities()
@@ -109,13 +111,102 @@ def identity_list() -> None:
         click.echo("Create one with: wh identity create")
         return
 
+    # Get default
+    default_addr = store.get_default_identity_address()
+
     # Print header
-    click.echo(f"{'ADDRESS':<28} {'NAME'}")
-    click.echo("-" * 50)
+    click.echo(f"  {'ADDRESS':<28} {'NAME'}")
+    click.echo("-" * 52)
 
     for ident in identities:
         name = ident.name or "(unnamed)"
-        click.echo(f"{ident.address:<28} {name}")
+        is_default = ident.address == default_addr
+        marker = "*" if is_default else " "
+        suffix = " (default)" if is_default else ""
+        click.echo(f"{marker} {ident.address:<28} {name}{suffix}")
+
+
+@identity.command("default")
+def identity_default() -> None:
+    """
+    Show the current default identity.
+
+    \b
+    Example:
+        $ wh identity default
+        Default identity: wh://abc123def456ghij.wns
+        Name: my-server
+
+        $ wh identity default
+        No default identity set (will use first identity)
+    """
+    store = WNSIdentityStore()
+    default = store.get_default_identity()
+
+    if not default:
+        click.echo("No identities found.")
+        click.echo("Create one with: wh identity create")
+        return
+
+    # Check if explicitly set or just using first
+    configured_default = store.get_default_identity_address()
+
+    if configured_default:
+        click.echo(f"Default identity: {default.full_address}")
+        if default.name:
+            click.echo(f"Name: {default.name}")
+    else:
+        click.echo("No default identity set (using first identity)")
+        click.echo(f"Current: {default.full_address}")
+        if default.name:
+            click.echo(f"Name: {default.name}")
+        click.echo()
+        click.echo("Set a default with: wh identity set-default <address>")
+
+
+@identity.command("set-default")
+@click.argument("address")
+def identity_set_default(address: str) -> None:
+    """
+    Set an identity as the default.
+
+    The default identity is used when no identity is specified for
+    commands like 'wh serve' or 'wh listen'.
+
+    \b
+    Example:
+        $ wh identity set-default abc123def456ghij
+        Default set: wh://abc123def456ghij.wns
+
+        # Clear the default (use first identity)
+        $ wh identity set-default --clear
+    """
+    store = WNSIdentityStore()
+
+    if not store.set_default_identity(address):
+        raise click.ClickException(f"Identity not found: {address}")
+
+    identity = store.load_identity(address)
+    click.echo(f"Default set: {identity.full_address}")
+    if identity.name:
+        click.echo(f"Name: {identity.name}")
+
+
+@identity.command("clear-default")
+def identity_clear_default() -> None:
+    """
+    Clear the default identity setting.
+
+    After clearing, the first identity will be used as the default.
+
+    \b
+    Example:
+        $ wh identity clear-default
+        Default cleared. First identity will be used.
+    """
+    store = WNSIdentityStore()
+    store.clear_default_identity()
+    click.echo("Default cleared. First identity will be used.")
 
 
 @identity.command("show")

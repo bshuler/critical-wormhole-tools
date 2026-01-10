@@ -198,6 +198,7 @@ class WNSIdentityStore:
 
     Storage layout:
         ~/.wh/
+            config.json              # Global config (default identity, etc.)
             identity/
                 <address>/
                     identity.json    # Contains keys and metadata
@@ -212,6 +213,23 @@ class WNSIdentityStore:
         self.base_path = Path(base_path)
         self.identity_path = self.base_path / "identity"
         self.known_hosts_path = self.base_path / "known_hosts"
+        self.config_path = self.base_path / "config.json"
+
+    def _load_config(self) -> dict:
+        """Load global config."""
+        if not self.config_path.exists():
+            return {}
+        try:
+            with open(self.config_path) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+
+    def _save_config(self, config: dict) -> None:
+        """Save global config."""
+        self.base_path.mkdir(parents=True, exist_ok=True)
+        with open(self.config_path, "w") as f:
+            json.dump(config, f, indent=2)
 
     def _ensure_dirs(self) -> None:
         """Ensure storage directories exist."""
@@ -307,13 +325,61 @@ class WNSIdentityStore:
         return identity
 
     def get_default_identity(self) -> Optional[WNSIdentity]:
-        """Get the default identity (first one, or marked as default)."""
+        """
+        Get the default identity.
+
+        Returns the identity marked as default in config, or the first
+        identity if no default is set.
+        """
         identities = self.list_identities()
         if not identities:
             return None
 
-        # TODO: Add support for marking an identity as default
+        # Check config for default
+        config = self._load_config()
+        default_address = config.get("default_identity")
+
+        if default_address:
+            # Try to load the configured default
+            for identity in identities:
+                if identity.address == default_address:
+                    return identity
+            # Default not found - fall through to first identity
+
         return identities[0]
+
+    def set_default_identity(self, address: str) -> bool:
+        """
+        Set an identity as the default.
+
+        Args:
+            address: The address of the identity to set as default
+
+        Returns:
+            True if successful, False if identity not found
+        """
+        # Verify identity exists
+        identity = self.load_identity(address)
+        if not identity:
+            return False
+
+        # Update config
+        config = self._load_config()
+        config["default_identity"] = address
+        self._save_config(config)
+        return True
+
+    def clear_default_identity(self) -> None:
+        """Clear the default identity setting."""
+        config = self._load_config()
+        if "default_identity" in config:
+            del config["default_identity"]
+            self._save_config(config)
+
+    def get_default_identity_address(self) -> Optional[str]:
+        """Get the address of the default identity (without loading it)."""
+        config = self._load_config()
+        return config.get("default_identity")
 
 
 def parse_wns_address(uri: str) -> Optional[str]:
