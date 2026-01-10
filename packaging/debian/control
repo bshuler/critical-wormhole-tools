@@ -1,0 +1,42 @@
+Source: critical-wormhole-tools
+Section: net
+Priority: optional
+Maintainer: Critical Wormhole Team <team@example.com>
+Build-Depends: debhelper-compat (= 13),
+               dh-python,
+               python3-all,
+               python3-setuptools,
+               python3-pip,
+               python3-venv
+Standards-Version: 4.6.2
+Homepage: https://github.com/bshuler/critical-wormhole-tools
+Vcs-Git: https://github.com/bshuler/critical-wormhole-tools.git
+Vcs-Browser: https://github.com/bshuler/critical-wormhole-tools
+Rules-Requires-Root: no
+
+Package: critical-wormhole-tools
+Architecture: all
+Depends: ${python3:Depends},
+         ${misc:Depends},
+         python3-nacl,
+         python3-click,
+         python3-twisted,
+         python3-attr,
+         python3-yaml,
+         python3-aiohttp,
+         python3-httpx
+Recommends: python3-asyncssh
+Description: Secure network utilities using Magic Wormhole
+ Critical Wormhole Tools (wh/cwt) provides secure network utilities
+ using Magic Wormhole code-based addressing. Instead of IP addresses
+ and port forwarding, users share human-readable codes like
+ "7-guitar-sunset" to connect securely from anywhere.
+ .
+ Features include:
+  - wh nc: Netcat-style bidirectional pipe
+  - wh ssh: SSH client over wormhole
+  - wh scp: Secure file copy
+  - wh sftp: Interactive SFTP client
+  - wh curl/wget: HTTP through wormhole
+  - wh tunnel: Port forwarding
+  - WNS: Wormhole Name Service for persistent addresses

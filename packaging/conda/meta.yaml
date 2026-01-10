@@ -1,0 +1,76 @@
+{% set name = "critical-wormhole-tools" %}
+{% set version = "0.4.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/c/critical_wormhole_tools/critical_wormhole_tools-{{ version }}.tar.gz
+  sha256: PLACEHOLDER
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  entry_points:
+    - wh = wh.cli.main:cli
+    - cwt = wh.cli.main:cli
+
+requirements:
+  host:
+    - python >=3.10
+    - pip
+    - setuptools
+    - wheel
+  run:
+    - python >=3.10
+    - magic-wormhole >=0.14.0
+    - asyncssh >=2.14.0
+    - click >=8.0.0
+    - twisted >=22.0.0
+    - attrs >=21.0.0
+    - httpx >=0.25.0
+    - rich >=13.0.0
+    - noiseprotocol >=0.3.0
+    - pynacl >=1.5.0
+    - aiohttp >=3.9.0
+    - pyyaml >=6.0.0
+
+test:
+  imports:
+    - wh
+    - wh.cli
+    - wh.core
+  commands:
+    - wh --help
+    - wh --version
+  requires:
+    - pip
+
+about:
+  home: https://github.com/bshuler/critical-wormhole-tools
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: Secure network utilities using Magic Wormhole code-based addressing
+  description: |
+    Critical Wormhole Tools (wh/cwt) provides secure network utilities using
+    Magic Wormhole code-based addressing. Instead of IP addresses and port
+    forwarding, users share human-readable codes like "7-guitar-sunset" to
+    connect securely from anywhere.
+
+    Features include:
+    - wh nc: Netcat-style bidirectional pipe
+    - wh ssh: SSH client over wormhole
+    - wh scp: Secure file copy
+    - wh sftp: Interactive SFTP client
+    - wh curl/wget: HTTP requests through wormhole
+    - wh tunnel: SSH-style port forwarding
+    - WNS: Wormhole Name Service for persistent addresses
+  dev_url: https://github.com/bshuler/critical-wormhole-tools
+  doc_url: https://github.com/bshuler/critical-wormhole-tools#readme
+
+extra:
+  recipe-maintainers:
+    - bshuler

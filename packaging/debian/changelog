@@ -1,0 +1,9 @@
+critical-wormhole-tools (0.4.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Core tools: nc, ssh, scp, sftp, curl, wget
+  * Additional tools: ping, rsync, proxy, tunnel, telnet, ftp, nmap
+  * Wormhole Name Service (WNS) for persistent addresses
+  * Browser extension support via daemon mode
+
+ -- Critical Wormhole Team <team@example.com>  Fri, 10 Jan 2026 00:00:00 +0000

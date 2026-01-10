@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>critical-wormhole-tools</id>
+    <version>0.4.0</version>
+    <title>Critical Wormhole Tools</title>
+    <authors>Critical Wormhole Team</authors>
+    <owners>bshuler</owners>
+    <licenseUrl>https://github.com/bshuler/critical-wormhole-tools/blob/main/LICENSE</licenseUrl>
+    <projectUrl>https://github.com/bshuler/critical-wormhole-tools</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/bshuler/critical-wormhole-tools/main/browser-extension/public/icons/wormhole-128.png</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Secure network utilities using Magic Wormhole code-based addressing.
+
+Instead of IP addresses and port forwarding, users share human-readable codes like "7-guitar-sunset" to connect securely from anywhere.
+
+## Features
+- `wh nc` - Netcat-style bidirectional pipe
+- `wh ssh` - SSH client over wormhole
+- `wh scp` - Secure file copy
+- `wh sftp` - Interactive SFTP client
+- `wh curl/wget` - HTTP requests through wormhole
+- `wh tunnel` - SSH-style port forwarding
+- `wh identity` - WNS identity management
+
+## Quick Start
+```
+# Listen on one machine
+wh listen --http 8080
+# Outputs: 7-guitar-sunset
+
+# Connect from another
+wh curl 7-guitar-sunset/api/data
+```
+    </description>
+    <summary>Secure network utilities using Magic Wormhole code-based addressing</summary>
+    <releaseNotes>https://github.com/bshuler/critical-wormhole-tools/blob/main/CHANGELOG.md</releaseNotes>
+    <copyright>Copyright 2024-2026 Critical Wormhole Team</copyright>
+    <tags>wormhole ssh sftp scp netcat tunnel secure p2p nat-traversal cli</tags>
+    <dependencies>
+      <dependency id="python" version="3.10" />
+    </dependencies>
+    <projectSourceUrl>https://github.com/bshuler/critical-wormhole-tools</projectSourceUrl>
+    <docsUrl>https://github.com/bshuler/critical-wormhole-tools#readme</docsUrl>
+    <bugTrackerUrl>https://github.com/bshuler/critical-wormhole-tools/issues</bugTrackerUrl>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

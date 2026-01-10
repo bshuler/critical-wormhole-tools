@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+
+export PYBUILD_NAME=critical-wormhole-tools
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	# Install shell completions
+	install -d debian/critical-wormhole-tools/usr/share/bash-completion/completions
+	install -d debian/critical-wormhole-tools/usr/share/zsh/vendor-completions
+	# Completions will be generated at package build time
+
+override_dh_installchangelogs:
+	dh_installchangelogs CHANGELOG.md

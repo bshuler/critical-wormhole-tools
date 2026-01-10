@@ -1,0 +1,81 @@
+name: critical-wormhole-tools
+version: '0.4.0'
+summary: Secure network utilities using Magic Wormhole
+description: |
+  Critical Wormhole Tools (wh/cwt) provides secure network utilities using
+  Magic Wormhole code-based addressing. Instead of IP addresses and port
+  forwarding, users share human-readable codes like "7-guitar-sunset" to
+  connect securely from anywhere.
+
+  **Features:**
+  - `wh nc` - Netcat-style bidirectional pipe
+  - `wh ssh` - SSH client over wormhole
+  - `wh scp` - Secure file copy
+  - `wh sftp` - Interactive SFTP client
+  - `wh curl/wget` - HTTP requests through wormhole
+  - `wh tunnel` - SSH-style port forwarding
+  - `wh identity` - WNS identity management
+
+  **Quick Start:**
+  ```
+  # Listen on one machine
+  wh listen --http 8080
+  # Outputs: 7-guitar-sunset
+
+  # Connect from another
+  wh curl 7-guitar-sunset/api/data
+  ```
+
+grade: stable
+confinement: strict
+base: core22
+license: MIT
+
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+
+apps:
+  wh:
+    command: bin/wh
+    plugs:
+      - network
+      - network-bind
+      - home
+      - ssh-keys
+    environment:
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+
+  cwt:
+    command: bin/cwt
+    plugs:
+      - network
+      - network-bind
+      - home
+      - ssh-keys
+    environment:
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+
+parts:
+  critical-wormhole-tools:
+    plugin: python
+    source: .
+    python-packages:
+      - pip
+      - setuptools
+      - wheel
+    build-packages:
+      - python3-dev
+      - libffi-dev
+      - libssl-dev
+      - libsodium-dev
+      - build-essential
+    stage-packages:
+      - libsodium23
+      - python3-minimal
+    override-build: |
+      craftctl default
+      # Generate completions
+      $CRAFT_PART_INSTALL/bin/wh --help > /dev/null || true

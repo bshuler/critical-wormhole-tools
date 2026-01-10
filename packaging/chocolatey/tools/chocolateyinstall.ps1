@@ -1,17 +1,15 @@
 $ErrorActionPreference = 'Stop'
 
-$toolsDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
+$packageName = 'critical-wormhole-tools'
+$version = '0.4.0'
 
-# Install via pip/pipx
-$pipxInstalled = Get-Command pipx -ErrorAction SilentlyContinue
+# Install via pip
+Write-Host "Installing $packageName $version via pip..."
+python -m pip install --upgrade critical-wormhole-tools==$version
 
-if ($pipxInstalled) {
-    Write-Host "Installing critical-wormhole-tools via pipx..."
-    pipx install critical-wormhole-tools
-} else {
-    Write-Host "Installing critical-wormhole-tools via pip..."
-    pip install critical-wormhole-tools
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to install $packageName via pip"
 }
 
-Write-Host "Critical Wormhole Tools installed successfully!"
-Write-Host "Run 'wh --help' or 'cwt --help' to get started."
+Write-Host "$packageName $version has been installed successfully!"
+Write-Host "Use 'wh --help' to see available commands."

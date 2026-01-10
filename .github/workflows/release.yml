@@ -1,0 +1,232 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.4.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
+
+jobs:
+  # Build Python package and publish to PyPI
+  pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools
+        run: pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+
+  # Build Docker images
+  docker:
+    runs-on: ubuntu-latest
+    needs: pypi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: version
+        run: echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/critical-wormhole-tools:${{ steps.version.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/critical-wormhole-tools:latest
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+
+  # Build Snap package
+  snap:
+    runs-on: ubuntu-latest
+    needs: pypi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy snapcraft.yaml
+        run: cp packaging/snap/snapcraft.yaml .
+
+      - name: Build snap
+        uses: snapcore/action-build@v1
+        id: snap-build
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-package
+          path: ${{ steps.snap-build.outputs.snap }}
+
+      # Uncomment when ready to publish to Snap Store
+      # - name: Publish to Snap Store
+      #   uses: snapcore/action-publish@v1
+      #   with:
+      #     snap: ${{ steps.snap-build.outputs.snap }}
+      #     release: stable
+      #   env:
+      #     SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_TOKEN }}
+
+  # Build Debian package
+  debian:
+    runs-on: ubuntu-latest
+    needs: pypi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y devscripts debhelper dh-python python3-all python3-setuptools
+
+      - name: Copy debian directory
+        run: cp -r packaging/debian .
+
+      - name: Build deb package
+        run: |
+          dpkg-buildpackage -us -uc -b
+          mkdir -p dist-deb
+          mv ../*.deb dist-deb/
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: dist-deb/
+
+  # Build RPM package
+  rpm:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    needs: pypi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          dnf install -y rpm-build python3-devel python3-setuptools python3-pip
+
+      - name: Build RPM
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          cp packaging/rpm/critical-wormhole-tools.spec ~/rpmbuild/SPECS/
+          pip download --no-deps -d ~/rpmbuild/SOURCES critical-wormhole-tools==${VERSION#v} || \
+            cp dist/*.tar.gz ~/rpmbuild/SOURCES/ 2>/dev/null || true
+          rpmbuild -ba ~/rpmbuild/SPECS/critical-wormhole-tools.spec || echo "RPM build requires source tarball"
+          mkdir -p dist-rpm
+          cp ~/rpmbuild/RPMS/*/*.rpm dist-rpm/ 2>/dev/null || echo "No RPMs built"
+
+      - name: Upload rpm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: dist-rpm/
+        continue-on-error: true
+
+  # Create GitHub release artifacts
+  release-artifacts:
+    runs-on: ubuntu-latest
+    needs: [pypi, docker, snap, debian, rpm]
+    if: github.event_name == 'release'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/**/*.whl
+            artifacts/**/*.tar.gz
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
+            artifacts/**/*.snap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Update Homebrew tap (requires separate tap repo)
+  homebrew:
+    runs-on: macos-latest
+    needs: pypi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Homebrew formula
+        run: |
+          VERSION_NUM=${VERSION#v}
+          echo "Generating formula for version $VERSION_NUM"
+          # Calculate SHA256 of the PyPI package
+          pip download --no-deps critical-wormhole-tools==$VERSION_NUM
+          SHA256=$(shasum -a 256 critical_wormhole_tools-*.tar.gz | cut -d' ' -f1)
+          echo "SHA256: $SHA256"
+          # Update formula with correct SHA256
+          sed -i '' "s/PLACEHOLDER_SHA256/$SHA256/" packaging/homebrew/critical-wormhole-tools.rb
+          cat packaging/homebrew/critical-wormhole-tools.rb
+
+      - name: Upload formula artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: packaging/homebrew/critical-wormhole-tools.rb
+
+      # Uncomment when tap repo is set up
+      # - name: Update Homebrew tap
+      #   uses: peter-evans/repository-dispatch@v2
+      #   with:
+      #     token: ${{ secrets.TAP_GITHUB_TOKEN }}
+      #     repository: bshuler/homebrew-tap
+      #     event-type: update-formula
+      #     client-payload: '{"version": "${{ env.VERSION }}"}'
