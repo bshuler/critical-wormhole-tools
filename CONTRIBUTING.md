@@ -48,14 +48,28 @@ cd cwt
 python -m venv venv
 source venv/bin/activate  # or `venv\Scripts\activate` on Windows
 
-# Install in development mode
+# Install in development mode (using Makefile)
+make install-dev
+
+# Or manually:
 pip install -e ".[dev]"
+```
 
-# Run tests
-pytest
+## Using the Makefile
 
-# Run linting
-ruff check src tests
+We provide a Makefile for common development tasks:
+
+```bash
+make help             # Show all available commands
+make install-dev      # Install with dev dependencies
+make test             # Run all Python tests
+make test-coverage    # Run tests with coverage report
+make lint             # Run linting checks
+make format           # Auto-fix linting issues
+make extension-test   # Run browser extension tests
+make build            # Build Python package
+make docker-build     # Build Docker image
+make clean            # Remove build artifacts
 ```
 
 ## Code Style
