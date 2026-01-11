@@ -5,10 +5,15 @@ Daemon mode that listens for incoming wormhole connections.
 Can forward to local ports or run integrated services like SSH.
 """
 
+import asyncio
+
 import click
 from typing import Optional
 
 from wh.cli.main import async_command
+
+# Dilation timeout - should match browser extension timeout
+DILATION_TIMEOUT = 30  # seconds
 from wh.core.wormhole_manager import WormholeManager
 
 
@@ -93,11 +98,14 @@ async def listen(
             click.echo(f"[*] {msg}", err=True)
 
     # Create wormhole manager
+    # When --no-dilate is set, disable dilation at the wormhole level
+    # to avoid processing browser dilation messages incorrectly
     manager = WormholeManager(
         relay_url=ctx.obj.get('relay'),
         transit_relay=ctx.obj.get('transit'),
         code_length=ctx.obj.get('code_length', 2),
         on_status=status if verbose > 0 else None,
+        enable_dilation=dilate,
     )
 
     try:
@@ -117,10 +125,18 @@ async def listen(
                 # Dilation mode - use WebRTC for faster streaming
                 try:
                     status("Waiting for dilation...")
-                    await manager.dilate()
+                    await asyncio.wait_for(manager.dilate(), timeout=DILATION_TIMEOUT)
                     status("Dilation established")
+                except asyncio.TimeoutError:
+                    status(f"Dilation timed out after {DILATION_TIMEOUT}s, falling back to message passing")
                 except Exception as e:
                     status(f"Dilation failed: {e}, falling back to message passing")
+            else:
+                # Even without dilation, we need to wait for peer connection
+                # (PAKE and version exchange) before we can exchange messages
+                click.echo("[DEBUG] Waiting for peer connection...", err=True)
+                await manager.verify_connection()
+                click.echo("[DEBUG] Peer connected!", err=True)
 
             server = HTTPFileServer(manager, serve)
             await server.run()
@@ -146,7 +162,6 @@ async def listen(
         else:
             # Generic mode - just accept connections
             click.echo("Waiting for connections...", err=True)
-            import asyncio
             await asyncio.Event().wait()
 
     except KeyboardInterrupt:

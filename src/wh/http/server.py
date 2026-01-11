@@ -53,13 +53,15 @@ class HTTPFileServer:
 
         Listens for HTTP requests and responds with file contents.
         """
-        print(f"Serving files from: {self.serve_dir}")
-        print("Waiting for requests...")
+        print(f"Serving files from: {self.serve_dir}", flush=True)
+        print("Waiting for requests...", flush=True)
 
         while True:
             try:
                 # Receive request
+                print("[HTTPFileServer] Calling receive_message()...", flush=True)
                 request_data = await self.manager.receive_message()
+                print(f"[HTTPFileServer] Received: {len(request_data) if request_data else 0} bytes", flush=True)
 
                 if request_data is None:
                     print("Connection closed")
@@ -82,7 +84,9 @@ class HTTPFileServer:
                     await self._send_error(400, "Bad Request", "Unknown request type")
 
             except Exception as e:
-                print(f"Error handling request: {e}")
+                import traceback
+                print(f"Error handling request: {e}", flush=True)
+                traceback.print_exc()
                 try:
                     await self._send_error(500, "Internal Server Error", str(e))
                 except Exception:

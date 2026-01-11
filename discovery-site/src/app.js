@@ -242,8 +242,12 @@ export async function ensureConnection(address, useDilation = CONFIG.useDilation
 
     notifyStateChange(address, 'connected');
 
-    // Try to dilate if enabled
-    if (useDilation) {
+    // Try to dilate if enabled AND peer supports it
+    // Check peer's version info for dilation support
+    const peerSupportsDilation = wormhole.peerVersion &&
+      (wormhole.peerVersion['can-dilate'] || wormhole.peerVersion['dilation-abilities']);
+
+    if (useDilation && peerSupportsDilation) {
       try {
         console.log('Attempting to dilate connection...');
         await wormhole.dilate();
@@ -252,6 +256,8 @@ export async function ensureConnection(address, useDilation = CONFIG.useDilation
       } catch (e) {
         console.warn('Dilation failed, continuing with undilated connection:', e.message);
       }
+    } else if (useDilation && !peerSupportsDilation) {
+      console.log('Peer does not support dilation, using undilated connection');
     }
 
   } catch (error) {

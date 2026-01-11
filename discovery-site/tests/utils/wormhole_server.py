@@ -5,6 +5,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -37,6 +38,8 @@ class WormholeServer:
         self.process: Optional[subprocess.Popen] = None
         self.code: Optional[str] = None
         self._output_lines: list[str] = []
+        self._output_thread: Optional[threading.Thread] = None
+        self._stop_output = False
 
     def start(self) -> str:
         """Start the wormhole server and return the code.
@@ -52,7 +55,10 @@ class WormholeServer:
         if not self.serve_dir.exists():
             raise FileNotFoundError(f"Serve directory not found: {self.serve_dir}")
 
-        cmd = [sys.executable, "-m", "wh.cli.main", "listen", "--serve", str(self.serve_dir)]
+        # Use --no-dilate to skip dilation and use message-based transfer immediately
+        # This avoids the 30s dilation timeout on the server side
+        # Use -v for verbose output to see what's happening
+        cmd = [sys.executable, "-m", "wh.cli.main", "-v", "listen", "--serve", str(self.serve_dir), "--no-dilate"]
 
         env = os.environ.copy()
         # Ensure unbuffered output
@@ -89,6 +95,8 @@ class WormholeServer:
                 if match:
                     self.code = match.group(1)
                     print(f"[WormholeServer] Got code: {self.code}")
+                    # Start background thread to continue reading output
+                    self._start_output_reader()
                     return self.code
 
             time.sleep(0.1)
@@ -98,10 +106,31 @@ class WormholeServer:
         output = "".join(self._output_lines)
         raise TimeoutError(f"Timed out waiting for wormhole code after {self.timeout}s:\n{output}")
 
+    def _start_output_reader(self):
+        """Start a background thread to continue reading server output."""
+        def read_output():
+            while not self._stop_output and self.process and self.process.poll() is None:
+                try:
+                    line = self.process.stdout.readline() if self.process.stdout else ""
+                    if line:
+                        self._output_lines.append(line)
+                        print(f"[wh listen] {line.rstrip()}")
+                except Exception:
+                    break
+                time.sleep(0.01)
+
+        self._output_thread = threading.Thread(target=read_output, daemon=True)
+        self._output_thread.start()
+
     def stop(self):
         """Stop the wormhole server gracefully."""
         if self.process is None:
             return
+
+        # Stop the output reader thread
+        self._stop_output = True
+        if self._output_thread and self._output_thread.is_alive():
+            self._output_thread.join(timeout=1)
 
         print("[WormholeServer] Stopping server...")
 
