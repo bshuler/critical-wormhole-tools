@@ -103,35 +103,50 @@ class HTTPFileServer:
         try:
             # Normalize and resolve path
             clean_path = path.lstrip("/")
+            print(f"  clean_path: {clean_path}")
             if not clean_path:
                 clean_path = "index.html"
 
             # Handle paths without extension - try adding .html
             file_path = self.serve_dir / clean_path
+            print(f"  file_path: {file_path}")
+            print(f"  file_path.exists(): {file_path.exists()}")
 
             # Try exact path first
             if not file_path.exists():
                 # Try with .html extension
                 html_path = self.serve_dir / (clean_path + ".html")
+                print(f"  trying html_path: {html_path}")
+                print(f"  html_path.exists(): {html_path.exists()}")
                 if html_path.exists():
                     file_path = html_path
                 else:
                     # Try index.html in directory
                     index_path = self.serve_dir / clean_path / "index.html"
+                    print(f"  trying index_path: {index_path}")
+                    print(f"  index_path.exists(): {index_path.exists()}")
                     if index_path.exists():
                         file_path = index_path
 
             # Resolve to absolute and check it's within serve_dir
             file_path = file_path.resolve()
+            print(f"  resolved file_path: {file_path}")
+            print(f"  serve_dir: {self.serve_dir}")
+            print(f"  within serve_dir: {str(file_path).startswith(str(self.serve_dir))}")
+
             if not str(file_path).startswith(str(self.serve_dir)):
+                print(f"  ERROR: Path traversal detected!")
                 await self._send_error(403, "Forbidden", "Path traversal not allowed")
                 return
 
             if not file_path.exists():
+                print(f"  ERROR: File does not exist!")
                 await self._send_error(404, "Not Found", f"File not found: {path}")
                 return
 
+            print(f"  is_file: {file_path.is_file()}")
             if not file_path.is_file():
+                print(f"  ERROR: Not a file!")
                 await self._send_error(403, "Forbidden", "Not a file")
                 return
 

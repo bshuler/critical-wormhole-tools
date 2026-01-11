@@ -1702,6 +1702,24 @@
       // Execute inline scripts after DOM and resources are ready
       executeInlineScripts(contentEl);
 
+      // Handle hash fragment - scroll to element after content is loaded
+      const hashIndex = path.indexOf('#');
+      if (hashIndex >= 0) {
+        const hash = path.substring(hashIndex + 1);
+        if (hash) {
+          // Use setTimeout to ensure DOM is fully rendered
+          setTimeout(() => {
+            const target = document.getElementById(hash);
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth' });
+              console.log('[Sandbox] Scrolled to hash:', hash);
+            } else {
+              console.warn('[Sandbox] Hash target not found:', hash);
+            }
+          }, 100);
+        }
+      }
+
       // Notify parent of title change
       const title = extractTitle(html);
       if (title) {

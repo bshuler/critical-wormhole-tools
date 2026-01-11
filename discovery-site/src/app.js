@@ -907,8 +907,17 @@ function initIndexPage() {
   async function viewerNavigateTo(path, method = 'GET', body = null) {
     console.log('[Viewer] Navigating to:', path);
     navLoadingEl.style.display = 'block';
+
+    // Split path and hash fragment
+    // Hash fragments should not be sent to server
+    const hashIndex = path.indexOf('#');
+    const basePath = hashIndex >= 0 ? path.substring(0, hashIndex) : path;
+    const hash = hashIndex >= 0 ? path.substring(hashIndex) : '';
+
     try {
-      const response = await fetchViewerResource(path, { method, body });
+      // Fetch content without hash
+      const response = await fetchViewerResource(basePath, { method, body });
+      // Display with full path (including hash) so sandbox can scroll
       displayContent(response.body, path);
     } catch (error) {
       console.error('[Viewer] Navigation error:', error);
