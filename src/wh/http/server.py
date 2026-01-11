@@ -101,8 +101,12 @@ class HTTPFileServer:
 
         # Security: prevent path traversal
         try:
+            # Strip query parameters from path
+            # Query params should be handled separately if needed
+            path_without_query = path.split('?')[0]
+
             # Normalize and resolve path
-            clean_path = path.lstrip("/")
+            clean_path = path_without_query.lstrip("/")
             print(f"  clean_path: {clean_path}")
             if not clean_path:
                 clean_path = "index.html"
@@ -111,21 +115,22 @@ class HTTPFileServer:
             file_path = self.serve_dir / clean_path
             print(f"  file_path: {file_path}")
             print(f"  file_path.exists(): {file_path.exists()}")
+            print(f"  file_path.is_file(): {file_path.is_file() if file_path.exists() else 'N/A'}")
 
-            # Try exact path first
-            if not file_path.exists():
+            # Try exact path first, but only if it's a file (not a directory)
+            if not file_path.is_file():
                 # Try with .html extension
                 html_path = self.serve_dir / (clean_path + ".html")
                 print(f"  trying html_path: {html_path}")
                 print(f"  html_path.exists(): {html_path.exists()}")
-                if html_path.exists():
+                if html_path.is_file():
                     file_path = html_path
                 else:
                     # Try index.html in directory
                     index_path = self.serve_dir / clean_path / "index.html"
                     print(f"  trying index_path: {index_path}")
                     print(f"  index_path.exists(): {index_path.exists()}")
-                    if index_path.exists():
+                    if index_path.is_file():
                         file_path = index_path
 
             # Resolve to absolute and check it's within serve_dir

@@ -20,17 +20,44 @@ from test_full_integration import (
 )
 
 
-async def go_to_edge_cases(page: Page, discovery_url: str, wormhole_server):
+async def go_to_edge_cases(page: Page, discovery_url: str, wormhole_server, first_time: bool = False):
     """Navigate to edge-cases page."""
-    await connect_to_wormhole(page, discovery_url, wormhole_server.code)
-    sandbox = await get_sandbox_frame(page)
-    await wait_for_content(sandbox, "h1")
+    if first_time:
+        # First time: connect to wormhole
+        await connect_to_wormhole(page, discovery_url, wormhole_server.code)
+        sandbox = await get_sandbox_frame(page)
+        await wait_for_content(sandbox, "h1")
+    else:
+        # Subsequent times: just get the existing sandbox
+        sandbox = await get_sandbox_frame(page)
+
+    # Check if we're already on edge-cases page
+    try:
+        title = await sandbox.locator("h1").first.text_content(timeout=2000)
+        if "Edge Cases" in title:
+            # Already on edge-cases page, no need to navigate
+            return sandbox
+    except:
+        pass
+
+    # Wait for nav to be ready
+    try:
+        await sandbox.locator("nav").first.wait_for(state="visible", timeout=10000)
+    except:
+        print("  WARNING: Nav not visible, page may be in unexpected state")
+        # Try to recover by reloading
+        await page.reload()
+        sandbox = await get_sandbox_frame(page)
+        await sandbox.locator("nav").first.wait_for(state="visible", timeout=10000)
 
     # Click edge-cases in nav
     edge_link = sandbox.locator("nav a[data-wh-href='/edge-cases']").first
+    await edge_link.wait_for(state="visible", timeout=10000)
     await edge_link.click()
     await page.wait_for_timeout(2000)
 
+    # Wait for the edge-cases page to load
+    await sandbox.locator("h1").first.wait_for(state="visible", timeout=10000)
     title = await sandbox.locator("h1").first.text_content()
     assert "Edge Cases" in title, f"Failed to navigate to edge-cases, got: {title}"
 
@@ -41,7 +68,7 @@ async def go_to_edge_cases(page: Page, discovery_url: str, wormhole_server):
 @pytest.mark.integration
 async def test_section_1_various_link_types(page: Page, discovery_url: str, wormhole_server):
     """Section 1: Test all 16 link types in the Various Link Types section."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -184,7 +211,7 @@ async def test_section_1_various_link_types(page: Page, discovery_url: str, worm
 @pytest.mark.integration
 async def test_section_2_nested_elements(page: Page, discovery_url: str, wormhole_server):
     """Section 2: Test nested elements in links."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -213,7 +240,7 @@ async def test_section_2_nested_elements(page: Page, discovery_url: str, wormhol
 @pytest.mark.integration
 async def test_section_3_target_attributes(page: Page, discovery_url: str, wormhole_server):
     """Section 3: Test links with target attributes."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
     targets = ["_self", "_blank", "_parent", "_top", "custom-frame"]
@@ -247,7 +274,7 @@ async def test_section_3_target_attributes(page: Page, discovery_url: str, wormh
 @pytest.mark.integration
 async def test_section_4_positioned_links(page: Page, discovery_url: str, wormhole_server):
     """Section 4: Test positioned links."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -302,7 +329,7 @@ async def test_section_4_positioned_links(page: Page, discovery_url: str, wormho
 @pytest.mark.integration
 async def test_section_5_dynamic_link_modification(page: Page, discovery_url: str, wormhole_server):
     """Section 5: Test dynamic link modification."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -334,7 +361,7 @@ async def test_section_5_dynamic_link_modification(page: Page, discovery_url: st
 @pytest.mark.integration
 async def test_section_6_event_propagation(page: Page, discovery_url: str, wormhole_server):
     """Section 6: Test event propagation."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -361,7 +388,7 @@ async def test_section_6_event_propagation(page: Page, discovery_url: str, wormh
 @pytest.mark.integration
 async def test_section_7_rapid_clicks(page: Page, discovery_url: str, wormhole_server):
     """Section 7: Test rapid clicks."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -388,7 +415,7 @@ async def test_section_7_rapid_clicks(page: Page, discovery_url: str, wormhole_s
 @pytest.mark.integration
 async def test_section_8_innerhtml_links(page: Page, discovery_url: str, wormhole_server):
     """Section 8: Test innerHTML created links."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -428,7 +455,7 @@ async def test_section_8_innerhtml_links(page: Page, discovery_url: str, wormhol
 @pytest.mark.integration
 async def test_section_9_svg_links(page: Page, discovery_url: str, wormhole_server):
     """Section 9: Test SVG links."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -471,7 +498,7 @@ async def test_section_9_svg_links(page: Page, discovery_url: str, wormhole_serv
 @pytest.mark.integration
 async def test_section_10_data_attributes(page: Page, discovery_url: str, wormhole_server):
     """Section 10: Test links with data attributes."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -498,7 +525,7 @@ async def test_section_10_data_attributes(page: Page, discovery_url: str, wormho
 @pytest.mark.integration
 async def test_section_11_download_attribute(page: Page, discovery_url: str, wormhole_server):
     """Section 11: Test link with download attribute."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
 
@@ -525,7 +552,7 @@ async def test_section_11_download_attribute(page: Page, discovery_url: str, wor
 @pytest.mark.integration
 async def test_section_12_rel_attributes(page: Page, discovery_url: str, wormhole_server):
     """Section 12: Test links with rel attributes."""
-    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server)
+    sandbox = await go_to_edge_cases(page, discovery_url, wormhole_server, first_time=True)
 
     results = []
     rels = ["noopener", "noreferrer", "nofollow", "noopener noreferrer"]
