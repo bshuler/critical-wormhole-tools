@@ -242,22 +242,30 @@ export async function ensureConnection(address, useDilation = CONFIG.useDilation
 
     notifyStateChange(address, 'connected');
 
-    // Try to dilate if enabled AND peer supports it
-    // Check peer's version info for dilation support
-    const peerSupportsDilation = wormhole.peerVersion &&
-      (wormhole.peerVersion['can-dilate'] || wormhole.peerVersion['dilation-abilities']);
+    // Try to dilate if enabled AND peer supports WebRTC dilation
+    // Browser can only use WebRTC for dilation, not TCP-based transports
+    // Python magic-wormhole advertises: direct-tcp-v1, relay-v1 (incompatible)
+    // Browser needs: webrtc-v1 (or similar WebRTC-based transport)
+    const peerAbilities = wormhole.peerVersion?.['dilation-abilities'] || [];
+    const peerSupportsWebRTC = peerAbilities.some(
+      ability => ability.type === 'webrtc-v1' || ability.type === 'webrtc'
+    );
+    const peerCanDilate = wormhole.peerVersion?.['can-dilate']?.length > 0;
 
-    if (useDilation && peerSupportsDilation) {
+    if (useDilation && peerSupportsWebRTC) {
       try {
-        console.log('Attempting to dilate connection...');
+        console.log('Attempting to dilate connection (peer supports WebRTC)...');
         await wormhole.dilate();
         console.log('Connection dilated successfully!');
         notifyStateChange(address, 'dilated');
       } catch (e) {
         console.warn('Dilation failed, continuing with undilated connection:', e.message);
       }
-    } else if (useDilation && !peerSupportsDilation) {
-      console.log('Peer does not support dilation, using undilated connection');
+    } else if (useDilation && peerCanDilate && !peerSupportsWebRTC) {
+      console.log('Peer supports dilation but not WebRTC transport, using phase-based messaging');
+      console.log('Peer dilation abilities:', peerAbilities.map(a => a.type).join(', '));
+    } else if (useDilation && !peerCanDilate) {
+      console.log('Peer does not support dilation, using phase-based messaging');
     }
 
   } catch (error) {

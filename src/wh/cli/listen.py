@@ -98,14 +98,14 @@ async def listen(
             click.echo(f"[*] {msg}", err=True)
 
     # Create wormhole manager
-    # When --no-dilate is set, disable dilation at the wormhole level
-    # to avoid processing browser dilation messages incorrectly
+    # Always enable dilation at protocol level - browser will check for WebRTC
+    # support and skip dilation if not available (Python uses TCP-based dilation)
     manager = WormholeManager(
         relay_url=ctx.obj.get('relay'),
         transit_relay=ctx.obj.get('transit'),
         code_length=ctx.obj.get('code_length', 2),
         on_status=status if verbose > 0 else None,
-        enable_dilation=dilate,
+        enable_dilation=True,  # Browser checks for WebRTC support before dilating
     )
 
     try:

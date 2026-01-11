@@ -55,10 +55,10 @@ class WormholeServer:
         if not self.serve_dir.exists():
             raise FileNotFoundError(f"Serve directory not found: {self.serve_dir}")
 
-        # Use --no-dilate to skip dilation and use message-based transfer immediately
-        # This avoids the 30s dilation timeout on the server side
         # Use -v for verbose output to see what's happening
-        cmd = [sys.executable, "-m", "wh.cli.main", "-v", "listen", "--serve", str(self.serve_dir), "--no-dilate"]
+        # Browser now properly checks for WebRTC support and skips dilation
+        # when peer only supports TCP-based dilation (direct-tcp-v1, relay-v1)
+        cmd = [sys.executable, "-m", "wh.cli.main", "-v", "listen", "--serve", str(self.serve_dir)]
 
         env = os.environ.copy()
         # Ensure unbuffered output
