@@ -92,6 +92,24 @@ Each fix entry follows this template:
 
 ---
 
+### FIX-007: Browser extension store assets preparation
+**Date**: 2026-01-23
+**Issue**: Browser extension ready for publishing but store assets not prepared
+**Root Cause**: Assets needed for Chrome Web Store and Firefox Add-ons submission
+**Fix Applied**:
+- Created `/browser-extension/store-assets/` directory
+- Created `description-short.txt` (132 chars for Chrome)
+- Created `description-full.txt` (detailed store listing)
+- Created `README.md` with submission checklist
+**Tests Added**: N/A (documentation files)
+**Related Files**:
+- `/browser-extension/store-assets/description-short.txt`
+- `/browser-extension/store-assets/description-full.txt`
+- `/browser-extension/store-assets/README.md`
+**Systemic Notes**: Store submission BLOCKED - user opted to skip Chrome and Firefox publishing for now. Developer accounts not available.
+
+---
+
 ### FIX-006: Caddy plugin integration tests and documentation
 **Date**: 2026-01-23
 **Issue**: Caddy plugin lacked integration tests and comprehensive documentation
@@ -119,6 +137,38 @@ Each fix entry follows this template:
 - `/integrations/caddy/README.md`
 - `/ROADMAP.md` (updated Caddy status from Scaffold to Complete)
 **Systemic Notes**: Integration tests use mock HTTP servers to avoid dependency on running daemon, enabling reliable CI testing
+
+---
+
+### FIX-008: Future roadmap scaffolds created
+**Date**: 2026-01-23
+**Issue**: No scaffolding existed for future roadmap items (mobile app, native modules)
+**Root Cause**: Phase E scaffolding planned but not yet implemented
+**Fix Applied**:
+- Created `/mobile/` directory with React Native app scaffold
+  - package.json, app.json, README.md
+  - 4 screens: HomeScreen, BrowserScreen, IdentitiesScreen, SettingsScreen
+  - App.js with navigation setup
+  - Basic Jest test structure
+- Created `/integrations/nginx-native/` directory with native Nginx module scaffold
+  - README.md with architecture and configuration documentation
+  - CMakeLists.txt for build configuration
+  - config file for Nginx module integration
+  - ngx_http_wormhole_module.c with module skeleton and directives
+- Created `/integrations/traefik-native/` directory with Traefik plugin scaffold
+  - README.md with plugin documentation and examples
+  - go.mod with dependencies
+  - wormhole.go with middleware implementation stub
+  - .traefik.yml plugin manifest
+**Tests Added**:
+- `/mobile/__tests__/App.test.js` - Basic smoke test
+**Related Files**:
+- `/mobile/` - Complete mobile app scaffold
+- `/integrations/nginx-native/` - Nginx module scaffold
+- `/integrations/traefik-native/` - Traefik plugin scaffold
+- `/integrations/README.md` - Updated with new native modules
+- `/ROADMAP.md` - Added Phase 6 for mobile and future features, marked Phase 5 complete
+**Systemic Notes**: Scaffolds provide clear architecture and structure for future development. Mobile app uses React Native for cross-platform support. Native modules enable zero-dependency integration for advanced users.
 
 ---
 

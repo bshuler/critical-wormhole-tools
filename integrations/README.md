@@ -33,12 +33,21 @@ These provide:
 
 | Web Server | Type | Status | Description |
 |------------|------|--------|-------------|
-| [Caddy](./caddy/) | Go Plugin | Scaffold | Native Caddy module with Caddyfile support |
+| [Caddy](./caddy/) | Go Plugin | ✅ Complete | Native Caddy module with Caddyfile support |
 | [Nginx](./nginx/) | Config | Docs | Reverse proxy configuration examples |
+| [Nginx Native](./nginx-native/) | C Module | Scaffold | Native Nginx module (future) |
 | [Apache](./apache/) | Config | Docs | mod_proxy configuration examples |
 | [HAProxy](./haproxy/) | Config | Docs | Load balancing configuration examples |
 | [Traefik](./traefik/) | Config | Docs | Docker/Kubernetes configuration examples |
+| [Traefik Native](./traefik-native/) | Go Plugin | Scaffold | Native Traefik middleware (future) |
 | [Squid](./squid/) | Config | Docs | Caching proxy configuration examples |
+
+## Future Integrations
+
+The following native modules are scaffolded for future development:
+
+- **[Nginx Native Module](./nginx-native/)** - C module for direct Nginx integration
+- **[Traefik Native Plugin](./traefik-native/)** - Go middleware for Traefik
 
 ## Quick Start with Reverse Proxy
 

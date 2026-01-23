@@ -303,7 +303,7 @@ wh daemon status
 
 ---
 
-## Phase 5: Web Server Integration (v0.5.0) 🚧 IN PROGRESS
+## Phase 5: Web Server Integration (v0.5.0) ✅ COMPLETE
 
 ### Overview
 
@@ -319,6 +319,13 @@ Enable popular web servers to serve content over wormhole addresses natively.
 | HAProxy | Config | ✅ Docs | Load balancing configuration |
 | Traefik | Config | ✅ Docs | Docker/Kubernetes examples |
 | Squid | Config | ✅ Docs | Caching proxy configuration |
+
+### Future Native Integrations (Scaffolded)
+
+| Integration | Type | Status | Description |
+|-------------|------|--------|-------------|
+| Nginx Native Module | C Module | Scaffold | Native `ngx_http_wormhole_module` for direct integration |
+| Traefik Native Plugin | Go Plugin | Scaffold | Native Traefik middleware for WNS routing |
 
 See `integrations/` directory for detailed documentation and examples.
 
@@ -486,8 +493,43 @@ wh --namespace=engineering ssh team-server
 | Additional Network Tools | v0.2.0 | ✅ Complete |
 | Wormhole Name Service | v0.3.0 | ✅ Complete |
 | Browser Extension | v0.4.0 | ✅ Complete (pending store publish) |
-| Web Server Integration | v0.5.0 | 🚧 In Progress |
+| Web Server Integration | v0.5.0 | ✅ Complete |
+| Mobile & Future Features | Post-v1.0 | 📋 Scaffolded |
 | Enterprise Features | v1.0.0 | 📋 Design |
+
+---
+
+## Phase 6: Mobile & Future Roadmap (Post-v1.0)
+
+### Mobile Application (Scaffolded)
+
+A React Native mobile application for iOS and Android providing:
+- WNS browser for navigating `wh://` URLs
+- Peer connection via wormhole codes
+- Identity management
+- QR code scanning for easy connections
+
+Status: **Scaffold** - See `/mobile/` directory for project structure and architecture.
+
+### Native Integration Modules (Scaffolded)
+
+#### Nginx Native Module
+
+C module for direct Nginx integration without reverse proxy:
+- `wormhole_enable` directive for native WNS routing
+- Connection pooling and DHT caching
+- Integration with wh daemon API
+
+Status: **Scaffold** - See `/integrations/nginx-native/` directory.
+
+#### Traefik Native Plugin
+
+Go middleware plugin for Traefik:
+- Native WNS resolution and routing
+- Dynamic configuration support
+- Prometheus metrics integration
+
+Status: **Scaffold** - See `/integrations/traefik-native/` directory.
 
 ---
 

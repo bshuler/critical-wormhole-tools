@@ -1,0 +1,12 @@
+# Traefik plugin manifest
+displayName: Wormhole Name System Middleware
+type: middleware
+import: github.com/yourusername/traefik-wormhole-plugin
+summary: Native WNS resolution and routing for Traefik
+
+testData:
+  daemonURL: http://localhost:8080
+  identity: default
+  timeout: 30s
+  cacheEnabled: true
+  cacheTTL: 5m
