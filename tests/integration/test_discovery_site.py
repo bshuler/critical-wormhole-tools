@@ -30,6 +30,9 @@ try:
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
+    # Define stub types for when playwright isn't available
+    Page = None  # type: ignore
+    Browser = None  # type: ignore
 
 
 # Paths
