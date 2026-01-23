@@ -292,6 +292,151 @@
         width: 100%;
       }
     }
+
+    /* Viewer styles - hidden by default */
+    #viewer-container {
+      display: none;
+    }
+
+    #viewer-container.active {
+      display: block;
+    }
+
+    /* Hide discovery when viewing */
+    body.viewing .container,
+    body.viewing footer {
+      display: none;
+    }
+
+    /* Loading state */
+    #wh-loading {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-family: system-ui, -apple-system, sans-serif;
+      z-index: 999999;
+    }
+
+    #wh-loading.active {
+      display: flex;
+    }
+
+    #wh-loading .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #wh-loading .text {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+
+    #wh-loading .address {
+      margin-top: 10px;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    /* Error state */
+    #wh-error {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #f8d7da;
+      color: #721c24;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 40px;
+      z-index: 999999;
+    }
+
+    #wh-error.active {
+      display: block;
+    }
+
+    #wh-error h1 {
+      margin-bottom: 20px;
+    }
+
+    #wh-error .message {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    #wh-error .buttons {
+      display: flex;
+      gap: 1rem;
+    }
+
+    #wh-error button {
+      background: #721c24;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    #wh-error button.secondary {
+      background: #6c757d;
+    }
+
+    /* Navigation loading bar */
+    #wh-nav-loading {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      animation: loading-bar 1s ease-in-out infinite;
+      z-index: 999999;
+    }
+
+    @keyframes loading-bar {
+      0% { transform: translateX(-100%); }
+      50% { transform: translateX(0%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Sandbox iframe for content with JS execution */
+    #wh-sandbox {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      border: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    #wh-sandbox.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -341,158 +486,27 @@
     Powered by <a href="https://github.com/bshuler/critical-wormhole-tools" target="_blank">Critical Wormhole Tools</a>
   </footer>
 
-  <script type="module">
-    import {
-      parseWormholeUrl,
-      ensureConnection,
-      onStateChange,
-      getActiveConnections,
-      disconnectAddress,
-      getRecentAddresses,
-      addRecentAddress,
-      generateConnectionId,
-      registerConnection
-    } from './app.js';
+  <!-- Viewer UI (hidden by default) -->
+  <div id="viewer-container">
+    <div id="wh-loading">
+      <div class="spinner"></div>
+      <div class="text">Loading content...</div>
+      <div class="address" id="wh-loading-address"></div>
+    </div>
 
-    const form = document.getElementById('connect-form');
-    const input = document.getElementById('address-input');
-    const button = document.getElementById('connect-btn');
-    const statusEl = document.getElementById('status');
-    const connectionsSection = document.getElementById('connections-section');
-    const connectionList = document.getElementById('connection-list');
-    const recentSection = document.getElementById('recent-section');
-    const recentList = document.getElementById('recent-list');
+    <div id="wh-error">
+      <h1>Connection Failed</h1>
+      <div class="message" id="wh-error-message"></div>
+      <div class="buttons">
+        <button onclick="location.reload()">Retry</button>
+        <button class="secondary" id="wh-back-btn">Back to Home</button>
+      </div>
+    </div>
 
-    // Load recent addresses
-    async function loadRecent() {
-      const recent = await getRecentAddresses();
-      if (recent.length > 0) {
-        recentSection.style.display = 'block';
-        recentList.innerHTML = recent.map(addr => `
-          <div class="recent-item" data-address="${addr}">
-            <span class="address">${addr}</span>
-            <span class="arrow">&rarr;</span>
-          </div>
-        `).join('');
+    <div id="wh-nav-loading"></div>
 
-        // Add click handlers
-        recentList.querySelectorAll('.recent-item').forEach(item => {
-          item.addEventListener('click', () => {
-            const addr = item.dataset.address;
-            input.value = addr;
-            form.dispatchEvent(new Event('submit'));
-          });
-        });
-      }
-    }
-
-    // Update connections display
-    function updateConnections() {
-      const connections = getActiveConnections();
-      const entries = Object.entries(connections);
-
-      if (entries.length > 0) {
-        connectionsSection.style.display = 'block';
-        connectionList.innerHTML = entries.map(([addr, info]) => `
-          <div class="connection-item" data-address="${addr}">
-            <div class="info">
-              <div class="status-dot"></div>
-              <span class="address">${addr}</span>
-            </div>
-            <button type="button" class="disconnect-btn">Disconnect</button>
-          </div>
-        `).join('');
-
-        // Add disconnect handlers
-        connectionList.querySelectorAll('.disconnect-btn').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const item = btn.closest('.connection-item');
-            const addr = item.dataset.address;
-            await disconnectAddress(addr);
-          });
-        });
-
-        // Click to navigate
-        connectionList.querySelectorAll('.connection-item').forEach(item => {
-          item.addEventListener('click', (e) => {
-            if (e.target.tagName === 'BUTTON') return;
-            const addr = item.dataset.address;
-            navigateToViewer(addr, '/');
-          });
-        });
-      } else {
-        connectionsSection.style.display = 'none';
-      }
-    }
-
-    // Navigate to viewer
-    function navigateToViewer(address, path) {
-      const connectionId = generateConnectionId();
-      registerConnection(connectionId, address);
-      window.location.href = `viewer.html?address=${encodeURIComponent(address)}&connectionId=${encodeURIComponent(connectionId)}&path=${encodeURIComponent(path)}`;
-    }
-
-    // Show status message
-    function showStatus(message, type) {
-      statusEl.textContent = message;
-      statusEl.className = 'status ' + type;
-    }
-
-    // Hide status
-    function hideStatus() {
-      statusEl.className = 'status';
-    }
-
-    // Handle form submission
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const rawInput = input.value.trim();
-      if (!rawInput) return;
-
-      const { address, path } = parseWormholeUrl(rawInput);
-
-      button.disabled = true;
-      showStatus(`Connecting to ${address}...`, 'connecting');
-
-      try {
-        await ensureConnection(address);
-        await addRecentAddress(address);
-
-        hideStatus();
-        navigateToViewer(address, path);
-      } catch (error) {
-        showStatus(`Connection failed: ${error.message}`, 'error');
-        button.disabled = false;
-      }
-    });
-
-    // Listen for state changes
-    onStateChange((address, state, count) => {
-      console.log('State change:', address, state, count);
-      updateConnections();
-    });
-
-    // Check for hash-based navigation
-    function checkHashNavigation() {
-      const hash = window.location.hash;
-      if (hash.startsWith('#/address/')) {
-        const match = hash.match(/^#\/address\/([^\/]+)(\/.*)?$/);
-        if (match) {
-          input.value = match[1] + (match[2] || '');
-          form.dispatchEvent(new Event('submit'));
-        }
-      }
-    }
-
-    // Initialize
-    loadRecent();
-    updateConnections();
-    checkHashNavigation();
-
-    // Handle hash changes
-    window.addEventListener('hashchange', checkHashNavigation);
-  </script>
+    <!-- Sandbox iframe for content with script execution -->
+    <iframe id="wh-sandbox" src="sandbox.html"></iframe>
+  </div>
 </body>
 </html>

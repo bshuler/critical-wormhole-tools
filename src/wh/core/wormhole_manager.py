@@ -54,6 +54,7 @@ class WormholeManager:
         code_length: int = 2,
         on_status: Optional[Callable[[str], None]] = None,
         fallback_relays: Optional[List[tuple]] = None,
+        enable_dilation: bool = True,
     ):
         """
         Initialize WormholeManager.
@@ -66,12 +67,14 @@ class WormholeManager:
             on_status: Callback for status updates.
             fallback_relays: List of (mailbox_url, transit_url) tuples to try
                            if primary relay fails.
+            enable_dilation: Whether to enable dilation support (default True).
         """
         self.appid = appid or self.DEFAULT_APPID
         self.relay_url = relay_url or self.DEFAULT_RELAY
         self.transit_relay = transit_relay or self.DEFAULT_TRANSIT_RELAY
         self.code_length = code_length
         self.on_status = on_status
+        self.enable_dilation = enable_dilation
 
         # Build list of relay configurations to try in order
         self._relay_list: List[tuple] = [(self.relay_url, self.transit_relay)]
@@ -248,7 +251,7 @@ class WormholeManager:
             self.relay_url,
             reactor,
             versions={"wh.tools/v1": {}},
-            dilation=True,
+            dilation=self.enable_dilation,
         )
 
         self._status("Allocating code...")
@@ -285,7 +288,7 @@ class WormholeManager:
             self.relay_url,
             reactor,
             versions={"wh.tools/v1": {}},
-            dilation=True,
+            dilation=self.enable_dilation,
         )
 
         self._status(f"Setting code: {code}")

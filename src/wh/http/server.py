@@ -53,13 +53,15 @@ class HTTPFileServer:
 
         Listens for HTTP requests and responds with file contents.
         """
-        print(f"Serving files from: {self.serve_dir}")
-        print("Waiting for requests...")
+        print(f"Serving files from: {self.serve_dir}", flush=True)
+        print("Waiting for requests...", flush=True)
 
         while True:
             try:
                 # Receive request
+                print("[HTTPFileServer] Calling receive_message()...", flush=True)
                 request_data = await self.manager.receive_message()
+                print(f"[HTTPFileServer] Received: {len(request_data) if request_data else 0} bytes", flush=True)
 
                 if request_data is None:
                     print("Connection closed")
@@ -82,7 +84,9 @@ class HTTPFileServer:
                     await self._send_error(400, "Bad Request", "Unknown request type")
 
             except Exception as e:
-                print(f"Error handling request: {e}")
+                import traceback
+                print(f"Error handling request: {e}", flush=True)
+                traceback.print_exc()
                 try:
                     await self._send_error(500, "Internal Server Error", str(e))
                 except Exception:
@@ -97,28 +101,33 @@ class HTTPFileServer:
 
         # Security: prevent path traversal
         try:
+            # Strip query parameters from path
+            # Query params should be handled separately if needed
+            path_without_query = path.split('?')[0]
+
             # Normalize and resolve path
-            clean_path = path.lstrip("/")
+            clean_path = path_without_query.lstrip("/")
             if not clean_path:
                 clean_path = "index.html"
 
             # Handle paths without extension - try adding .html
             file_path = self.serve_dir / clean_path
 
-            # Try exact path first
-            if not file_path.exists():
+            # Try exact path first, but only if it's a file (not a directory)
+            if not file_path.is_file():
                 # Try with .html extension
                 html_path = self.serve_dir / (clean_path + ".html")
-                if html_path.exists():
+                if html_path.is_file():
                     file_path = html_path
                 else:
                     # Try index.html in directory
                     index_path = self.serve_dir / clean_path / "index.html"
-                    if index_path.exists():
+                    if index_path.is_file():
                         file_path = index_path
 
             # Resolve to absolute and check it's within serve_dir
             file_path = file_path.resolve()
+
             if not str(file_path).startswith(str(self.serve_dir)):
                 await self._send_error(403, "Forbidden", "Path traversal not allowed")
                 return

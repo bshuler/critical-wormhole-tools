@@ -194,7 +194,7 @@ export class DilationManager {
         checkState();
       };
 
-      // Timeout after 30 seconds
+      // Timeout after 30 seconds to allow time for server-side dilation
       setTimeout(() => {
         if (this.state !== DilationState.CONNECTED) {
           this.setState(DilationState.FAILED);
