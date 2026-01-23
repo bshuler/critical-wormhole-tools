@@ -489,6 +489,73 @@ Critical Wormhole Tools uses [Magic Wormhole](https://magic-wormhole.readthedocs
 
 ---
 
+## Enterprise Features
+
+Critical Wormhole Tools includes enterprise-grade features for production deployments.
+
+### Authentication
+
+```bash
+# SSH public key authentication
+wh listen --ssh --auth-method=pubkey --authorized-keys=/etc/wh/authorized_keys
+
+# LDAP/Active Directory authentication
+wh listen --ssh --auth-method=ldap \
+    --ldap-server=ldap://ad.company.com \
+    --ldap-base-dn="dc=company,dc=com"
+```
+
+Supported methods: `none`, `pubkey`, `password`, `ldap`
+
+### Audit Logging
+
+```bash
+# Enable JSON audit logging for SIEM integration
+wh listen --ssh --audit-log=/var/log/wh/audit.log
+```
+
+Log events: `connection_start`, `connection_end`, `auth_success`, `auth_failure`, `file_transfer`, `command_exec`, `policy_violation`
+
+### Rate Limiting
+
+Create `/etc/wh/policy.yml`:
+
+```yaml
+rate_limits:
+  connections_per_minute: 10
+  bandwidth_mbps: 100
+
+quotas:
+  max_concurrent_connections: 50
+  max_transfer_gb_per_day: 100
+
+rules:
+  - match:
+      identity: "admin@*"
+    rate_limits:
+      connections_per_minute: 1000
+```
+
+### Multi-Tenancy (Namespaces)
+
+```bash
+# Create isolated namespace
+wh namespace create engineering --description "Engineering team"
+
+# Use namespace (different namespaces can have same codes)
+wh --namespace=engineering listen --ssh
+wh --namespace=engineering ssh 7-guitar-sunset
+```
+
+See [Enterprise Documentation](docs/enterprise/) for details.
+
+Install enterprise dependencies:
+```bash
+pip install "critical-wormhole-tools[enterprise]"
+```
+
+---
+
 ## Use Cases
 
 ### Remote Access Without VPN

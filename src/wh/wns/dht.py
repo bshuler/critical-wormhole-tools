@@ -305,12 +305,25 @@ async def get_bootstrap_nodes(
     return nodes
 
 
-def address_to_dht_key(address: str, relay_url: Optional[str] = None) -> bytes:
+def address_to_dht_key(
+    address: str,
+    relay_url: Optional[str] = None,
+    namespace: Optional[str] = None,
+) -> bytes:
     """
     Convert a WNS address to a DHT key.
 
     If relay_url is provided, the key is namespace-scoped for privacy.
+    If namespace is provided (enterprise feature), uses namespace-prefixed key.
     """
+    # Enterprise namespace takes precedence
+    if namespace:
+        try:
+            from wh.enterprise.namespace import get_namespace_dht_key
+            return get_namespace_dht_key(address, namespace)
+        except ImportError:
+            pass  # Enterprise module not available
+
     if relay_url:
         return namespace_dht_key(address, relay_url)
     return wns_address_to_info_hash(address)

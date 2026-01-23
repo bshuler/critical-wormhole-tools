@@ -438,42 +438,85 @@ cache allow wormhole_urls
 
 ---
 
-## Phase 6: Enterprise Features (v1.0.0)
+## Phase 6: Enterprise Features (v1.0.0) ✅ COMPLETE
 
-### Authentication & Authorization
+### Authentication & Authorization ✅
 
 ```bash
 # Require authentication for wormhole connection
 wh listen --ssh --auth-method=pubkey --authorized-keys=/etc/wh/authorized_keys
 
 # LDAP/AD integration
-wh listen --ssh --auth-method=ldap --ldap-server=ldap://ad.company.com
+wh listen --ssh --auth-method=ldap --ldap-server=ldap://ad.company.com --ldap-base-dn="dc=company,dc=com"
+
+# Password authentication
+wh listen --ssh --auth-method=password --password-file=/etc/wh/passwd
 ```
 
-### Audit Logging
+Supported authentication methods:
+- **none**: No authentication (default)
+- **pubkey**: SSH-style public key authentication (Ed25519)
+- **password**: Username/password with bcrypt hashing
+- **ldap**: LDAP/Active Directory integration with TLS support
+
+### Audit Logging ✅
 
 ```bash
 # Enable detailed audit logging
-wh daemon start --audit-log=/var/log/wh/audit.log
+wh listen --ssh --audit-log=/var/log/wh/audit.log
 
 # Log format: JSON for SIEM integration
-# {"timestamp": "...", "event": "connection", "code": "...", "peer": "...", "action": "ssh"}
+# {"event": "auth_success", "timestamp": "...", "identity": "jdoe", "source_ip": "..."}
 ```
 
-### Rate Limiting & Quotas
+Audit events:
+- `connection_start` / `connection_end`
+- `auth_success` / `auth_failure`
+- `file_transfer` (upload/download)
+- `command_exec` (SSH commands)
+- `policy_violation`
+- `namespace_change`
+
+Features:
+- Automatic log rotation
+- Event type filtering
+- Real-time callbacks
+- SIEM-compatible JSON format
+
+### Rate Limiting & Quotas ✅
 
 ```yaml
 # /etc/wh/policy.yml
 rate_limits:
   connections_per_minute: 10
+  requests_per_second: 100
   bandwidth_mbps: 100
+  burst_multiplier: 2.0
 
 quotas:
   max_concurrent_connections: 50
   max_transfer_gb_per_day: 100
+  max_sessions_per_identity: 5
+
+rules:
+  - match:
+      identity: "admin@*"
+    rate_limits:
+      connections_per_minute: 1000
+  - match:
+      source_ip: "10.0.0.0/8"
+    rate_limits:
+      bandwidth_mbps: 1000
 ```
 
-### Multi-Tenancy
+Features:
+- Token bucket rate limiting
+- Per-IP, per-identity, and global limits
+- CIDR-based IP matching
+- Wildcard pattern matching
+- Bandwidth throttling
+
+### Multi-Tenancy ✅
 
 ```bash
 # Namespace isolation for teams
@@ -481,7 +524,21 @@ wh --namespace=engineering listen --ssh
 wh --namespace=engineering ssh team-server
 
 # Different namespaces can use same codes without conflict
+
+# Namespace management
+wh namespace create engineering --description "Engineering team"
+wh namespace add-member engineering developer@example.com
+wh namespace list
 ```
+
+Features:
+- Namespace-prefixed DHT keys
+- Private/public namespaces
+- Admin and member management
+- Member limits
+- CLI commands: create, list, show, delete, add-admin, add-member
+
+See `docs/enterprise/` for detailed documentation.
 
 ---
 
@@ -494,8 +551,8 @@ wh --namespace=engineering ssh team-server
 | Wormhole Name Service | v0.3.0 | ✅ Complete |
 | Browser Extension | v0.4.0 | ✅ Complete (pending store publish) |
 | Web Server Integration | v0.5.0 | ✅ Complete |
+| Enterprise Features | v1.0.0 | ✅ Complete |
 | Mobile & Future Features | Post-v1.0 | 📋 Scaffolded |
-| Enterprise Features | v1.0.0 | 📋 Design |
 
 ---
 

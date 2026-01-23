@@ -172,4 +172,83 @@ Each fix entry follows this template:
 
 ---
 
+### FIX-009: Add enterprise authentication module
+**Date**: 2026-01-23
+**Issue**: No authentication support for enterprise deployments
+**Root Cause**: Phase 6 enterprise features not yet implemented
+**Fix Applied**:
+- Created `/src/wh/enterprise/__init__.py` - Enterprise module package
+- Created `/src/wh/enterprise/auth.py` - Authentication with pubkey, password, LDAP support
+- Created `/src/wh/enterprise/ldap_client.py` - LDAP connection pooling and utilities
+- Updated `/src/wh/cli/listen.py` - Added --auth-method, --authorized-keys, --ldap-* flags
+**Tests Added**: `/tests/unit/test_enterprise_auth.py` (20+ tests)
+**Related Files**:
+- `/src/wh/enterprise/__init__.py`
+- `/src/wh/enterprise/auth.py`
+- `/src/wh/enterprise/ldap_client.py`
+- `/src/wh/cli/listen.py`
+- `/tests/unit/test_enterprise_auth.py`
+- `/docs/enterprise/authentication.md`
+**Systemic Notes**: Part of Phase 6 enterprise features. LDAP requires ldap3 optional dependency.
+
+---
+
+### FIX-010: Add enterprise audit logging module
+**Date**: 2026-01-23
+**Issue**: No audit logging for compliance and security monitoring
+**Root Cause**: Phase 6 enterprise features not yet implemented
+**Fix Applied**:
+- Created `/src/wh/enterprise/audit.py` - JSON audit logging with rotation support
+- Updated `/src/wh/cli/listen.py` - Added --audit-log flag
+**Tests Added**: `/tests/unit/test_enterprise_audit.py` (25+ tests)
+**Related Files**:
+- `/src/wh/enterprise/audit.py`
+- `/src/wh/cli/listen.py`
+- `/tests/unit/test_enterprise_audit.py`
+- `/docs/enterprise/audit-logging.md`
+**Systemic Notes**: Supports SIEM integration (Splunk, ELK, Datadog). Log format is one JSON object per line.
+
+---
+
+### FIX-011: Add enterprise rate limiting module
+**Date**: 2026-01-23
+**Issue**: No rate limiting or quota enforcement for enterprise deployments
+**Root Cause**: Phase 6 enterprise features not yet implemented
+**Fix Applied**:
+- Created `/src/wh/enterprise/policy.py` - YAML policy file parsing with rule matching
+- Created `/src/wh/enterprise/rate_limiter.py` - Token bucket rate limiting, quotas, bandwidth throttling
+**Tests Added**:
+- `/tests/unit/test_enterprise_policy.py` (30+ tests)
+- `/tests/unit/test_enterprise_rate_limiter.py` (15+ tests)
+**Related Files**:
+- `/src/wh/enterprise/policy.py`
+- `/src/wh/enterprise/rate_limiter.py`
+- `/tests/unit/test_enterprise_policy.py`
+- `/tests/unit/test_enterprise_rate_limiter.py`
+- `/docs/enterprise/rate-limiting.md`
+**Systemic Notes**: Supports per-IP, per-identity, and global limits with CIDR matching and wildcards.
+
+---
+
+### FIX-012: Add enterprise multi-tenancy namespace module
+**Date**: 2026-01-23
+**Issue**: No namespace isolation for multi-tenant deployments
+**Root Cause**: Phase 6 enterprise features not yet implemented
+**Fix Applied**:
+- Created `/src/wh/enterprise/namespace.py` - Namespace management with DHT prefix isolation
+- Created `/src/wh/cli/namespace.py` - CLI commands for namespace management
+- Updated `/src/wh/cli/main.py` - Added --namespace global flag and namespace command group
+- Updated `/src/wh/wns/dht.py` - Added namespace-prefixed DHT key support
+**Tests Added**: `/tests/unit/test_enterprise_namespace.py` (30+ tests)
+**Related Files**:
+- `/src/wh/enterprise/namespace.py`
+- `/src/wh/cli/namespace.py`
+- `/src/wh/cli/main.py`
+- `/src/wh/wns/dht.py`
+- `/tests/unit/test_enterprise_namespace.py`
+- `/docs/enterprise/multi-tenancy.md`
+**Systemic Notes**: Namespaces provide DHT isolation so different teams can use same codes without conflict.
+
+---
+
 <!-- Add new fixes above this line -->

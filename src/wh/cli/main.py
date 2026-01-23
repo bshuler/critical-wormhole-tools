@@ -106,8 +106,14 @@ def resolve_relay(relay_option: str) -> tuple:
     count=True,
     help='Increase verbosity (-v for info, -vv for debug)'
 )
+@click.option(
+    '--namespace', '-n',
+    envvar='WH_NAMESPACE',
+    default=None,
+    help='Namespace for multi-tenancy isolation (Enterprise feature)'
+)
 @click.pass_context
-def cli(ctx: click.Context, relay: str, transit: str, code_length: int, verbose: int) -> None:
+def cli(ctx: click.Context, relay: str, transit: str, code_length: int, verbose: int, namespace: str) -> None:
     """
     wh - Wormhole Tools
 
@@ -164,6 +170,19 @@ def cli(ctx: click.Context, relay: str, transit: str, code_length: int, verbose:
     ctx.obj['transit'] = transit_url
     ctx.obj['code_length'] = code_length
     ctx.obj['verbose'] = verbose
+    ctx.obj['namespace'] = namespace
+
+    # Set namespace if specified
+    if namespace:
+        try:
+            from wh.enterprise.namespace import get_namespace_manager
+            manager = get_namespace_manager()
+            if not manager.exists(namespace):
+                click.echo(f"Warning: Namespace '{namespace}' does not exist", err=True)
+            else:
+                manager.set_current(namespace)
+        except ImportError:
+            pass  # Enterprise module not available
 
 
 # Import and register subcommands
@@ -191,6 +210,7 @@ from wh.cli.mount import mount  # noqa: E402
 from wh.cli.vnc import vnc  # noqa: E402
 from wh.cli.rdp import rdp  # noqa: E402
 from wh.wns.cli import identity, alias  # noqa: E402
+from wh.cli.namespace import namespace  # noqa: E402
 
 cli.add_command(nc)
 cli.add_command(listen)
@@ -216,6 +236,7 @@ cli.add_command(vnc)
 cli.add_command(rdp)
 cli.add_command(identity)
 cli.add_command(alias)
+cli.add_command(namespace)
 
 
 if __name__ == "__main__":

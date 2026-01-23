@@ -3,6 +3,10 @@ wh listen - Accept connections on a wormhole code.
 
 Daemon mode that listens for incoming wormhole connections.
 Can forward to local ports or run integrated services like SSH.
+
+Enterprise features:
+- Authentication: --auth-method (none, pubkey, password, ldap)
+- Audit logging: --audit-log
 """
 
 import asyncio
@@ -47,6 +51,32 @@ from wh.core.wormhole_manager import WormholeManager
     '--code',
     help='Use specific code instead of generating one'
 )
+# Enterprise authentication options
+@click.option(
+    '--auth-method',
+    type=click.Choice(['none', 'pubkey', 'password', 'ldap']),
+    default='none',
+    help='Authentication method (default: none)'
+)
+@click.option(
+    '--authorized-keys',
+    type=click.Path(exists=True),
+    help='Path to authorized_keys file (for pubkey auth)'
+)
+@click.option(
+    '--ldap-server',
+    help='LDAP server URL (for ldap auth)'
+)
+@click.option(
+    '--ldap-base-dn',
+    help='LDAP base DN for user searches'
+)
+# Enterprise audit logging
+@click.option(
+    '--audit-log',
+    type=click.Path(),
+    help='Path to audit log file (JSON format)'
+)
 @click.pass_context
 @async_command
 async def listen(
@@ -57,6 +87,11 @@ async def listen(
     serve: Optional[str],
     dilate: bool,
     code: Optional[str],
+    auth_method: str,
+    authorized_keys: Optional[str],
+    ldap_server: Optional[str],
+    ldap_base_dn: Optional[str],
+    audit_log: Optional[str],
 ) -> None:
     """
     Listen daemon - accept connections on a wormhole code.
@@ -80,6 +115,19 @@ async def listen(
     process is terminated with Ctrl+C.
 
     \b
+    ENTERPRISE AUTHENTICATION:
+        # Require SSH public key authentication
+        wh listen --ssh --auth-method=pubkey --authorized-keys=/etc/wh/authorized_keys
+
+        # Use LDAP/AD authentication
+        wh listen --ssh --auth-method=ldap --ldap-server=ldap://ad.company.com --ldap-base-dn="dc=company,dc=com"
+
+    \b
+    ENTERPRISE AUDIT LOGGING:
+        # Enable JSON audit logging
+        wh listen --ssh --audit-log=/var/log/wh/audit.log
+
+    \b
     Examples:
         # Forward to local web server
         $ wh listen -p 3000
@@ -92,6 +140,42 @@ async def listen(
         SSH server ready
     """
     verbose = ctx.obj.get('verbose', 0)
+    namespace = ctx.obj.get('namespace')
+
+    # Set up enterprise features
+    authenticator = None
+    audit_logger = None
+
+    # Configure authentication
+    if auth_method != 'none':
+        from wh.enterprise.auth import AuthMethod, create_authenticator
+
+        method = AuthMethod(auth_method)
+
+        if method == AuthMethod.PUBKEY:
+            if not authorized_keys:
+                raise click.ClickException("--authorized-keys required for pubkey auth")
+            authenticator = create_authenticator(method, authorized_keys=authorized_keys)
+            click.echo(f"Authentication: pubkey (authorized_keys: {authorized_keys})", err=True)
+
+        elif method == AuthMethod.LDAP:
+            if not ldap_server or not ldap_base_dn:
+                raise click.ClickException("--ldap-server and --ldap-base-dn required for ldap auth")
+            authenticator = create_authenticator(
+                method,
+                ldap_server=ldap_server,
+                ldap_base_dn=ldap_base_dn,
+            )
+            click.echo(f"Authentication: LDAP ({ldap_server})", err=True)
+
+        elif method == AuthMethod.PASSWORD:
+            raise click.ClickException("Password auth requires --password-file (not yet implemented in CLI)")
+
+    # Configure audit logging
+    if audit_log:
+        from wh.enterprise.audit import AuditLogger
+        audit_logger = AuditLogger(log_file=audit_log)
+        click.echo(f"Audit logging: {audit_log}", err=True)
 
     def status(msg: str) -> None:
         if verbose > 0:
@@ -115,7 +199,13 @@ async def listen(
             code = await manager.create_and_allocate_code()
 
         click.echo(f"Listening on code: {code}", err=True)
+        if namespace:
+            click.echo(f"Namespace: {namespace}", err=True)
         click.echo("Press Ctrl+C to stop", err=True)
+
+        # Log connection start if audit logging enabled
+        if audit_logger:
+            audit_logger.connection_start(code=code, namespace=namespace)
 
         if serve:
             # File server mode (browser extension compatible)
@@ -171,4 +261,8 @@ async def listen(
             raise
         raise click.ClickException(str(e))
     finally:
+        # Log connection end if audit logging enabled
+        if audit_logger:
+            audit_logger.connection_end(code=code or "", namespace=namespace)
+            audit_logger.close()
         await manager.close()
