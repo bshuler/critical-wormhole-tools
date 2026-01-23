@@ -417,6 +417,14 @@ Known hosts are stored in `~/.wh/known_hosts/`.
 | `wh proxy -l` | SOCKS5 proxy server | `wh proxy -l` |
 | `wh rsync` | Incremental file sync | `wh rsync -r ./src CODE:./dest` |
 | `wh rsync -l` | Receive rsync files | `wh rsync -l ./dest` |
+| `wh telnet` | Telnet client over wormhole | `wh telnet 7-guitar-sunset` |
+| `wh ftp` | FTP client over wormhole | `wh ftp 7-guitar-sunset` |
+| `wh nmap` | Network scanning through wormhole | `wh nmap 7-guitar-sunset -p 1-1000` |
+| `wh traceroute` | Trace route through wormhole | `wh traceroute 7-guitar-sunset` |
+| `wh dns` | DNS queries over wormhole | `wh dns 7-guitar-sunset example.com` |
+| `wh mount` | Mount remote filesystem (FUSE) | `wh mount 7-guitar-sunset /mnt` |
+| `wh vnc` | VNC client over wormhole | `wh vnc 7-guitar-sunset` |
+| `wh rdp` | RDP client over wormhole | `wh rdp 7-guitar-sunset` |
 
 ### WNS Commands
 
@@ -448,6 +456,19 @@ Known hosts are stored in `~/.wh/known_hosts/`.
 | `wh relay set-default` | Set default relay | `wh relay set-default work` |
 | `wh relay share` | Share config via wormhole | `wh relay share work` |
 | `wh relay discover` | Find relays via mDNS | `wh relay discover --add` |
+
+### Namespace Commands (Enterprise)
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `wh namespace create` | Create new namespace | `wh namespace create eng --description "Team"` |
+| `wh namespace list` | List all namespaces | `wh namespace list` |
+| `wh namespace show` | Show namespace details | `wh namespace show eng` |
+| `wh namespace delete` | Delete a namespace | `wh namespace delete old` |
+| `wh namespace add-admin` | Add admin to namespace | `wh namespace add-admin eng admin@example.com` |
+| `wh namespace add-member` | Add member to namespace | `wh namespace add-member eng dev@example.com` |
+| `wh namespace remove-admin` | Remove admin from namespace | `wh namespace remove-admin eng old@example.com` |
+| `wh namespace remove-member` | Remove member from namespace | `wh namespace remove-member eng old@example.com` |
 
 ---
 
@@ -785,7 +806,7 @@ make docker-build     # Build Docker image
 
 The project has comprehensive test coverage across Python and JavaScript:
 
-**Python Tests (745 tests):**
+**Python Tests (959 tests):**
 
 ```bash
 # All tests
