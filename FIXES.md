@@ -251,4 +251,31 @@ Each fix entry follows this template:
 
 ---
 
+### FIX-013: Fix playwright import error in integration tests
+**Date**: 2026-01-23
+**Issue**: Test collection failed with NameError when playwright not installed
+**Root Cause**: Type annotations for Browser and Page used even when playwright import failed
+**Fix Applied**: Added stub type assignments (`Page = None`, `Browser = None`) in except block
+**Tests Added**: N/A (fix to test infrastructure)
+**Related Files**:
+- `/tests/integration/test_discovery_site.py`
+**Systemic Notes**: When using conditional imports for optional dependencies, always provide stub types for annotations.
+
+---
+
+### FIX-014: Update README with accurate test counts and complete commands
+**Date**: 2026-01-23
+**Issue**: README documented outdated test counts and missing command references
+**Root Cause**: Documentation not updated after adding enterprise features and additional tools
+**Fix Applied**:
+- Updated Python test count from 745 to 959
+- Added 8 additional network tools (telnet, ftp, nmap, traceroute, dns, mount, vnc, rdp)
+- Added Namespace Commands table for enterprise multi-tenancy
+**Tests Added**: N/A (documentation update)
+**Related Files**:
+- `/README.md`
+**Systemic Notes**: Test counts and command references should be updated as part of feature release process.
+
+---
+
 <!-- Add new fixes above this line -->
