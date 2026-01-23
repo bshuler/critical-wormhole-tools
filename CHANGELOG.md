@@ -122,7 +122,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VNC/RDP async test fixtures for proper cleanup
 - Browser extension service worker lifecycle handling
 
-## [0.1.0] - 2024-01-XX
+## [0.1.0] - 2026-01-07
 
 ### Added
 

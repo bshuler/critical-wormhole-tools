@@ -22,7 +22,7 @@
 ## Current State
 
 ### Test Status
-- **Python Tests**: 745 passing
+- **Python Tests**: 791 passing
 - **Browser Extension Tests**: 552 passing
 - **Linting**: All checks pass (ruff)
 - **Coverage**: ~44% overall
