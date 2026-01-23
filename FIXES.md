@@ -278,4 +278,17 @@ Each fix entry follows this template:
 
 ---
 
+### FIX-015: Remove duplicate lowercase plan.md from git tracking
+**Date**: 2026-01-23
+**Issue**: Git tracking both PLAN.md and plan.md causing conflicts on macOS
+**Root Cause**: Case-sensitive git on case-insensitive macOS filesystem
+**Fix Applied**: Removed lowercase `plan.md` from git tracking using `git rm --cached`
+**Tests Added**: N/A (git fix)
+**Related Files**:
+- `plan.md` (deleted from git)
+- `PLAN.md` (retained)
+**Systemic Notes**: Always use consistent casing for filenames. Consider adding .gitattributes to enforce filename conventions.
+
+---
+
 <!-- Add new fixes above this line -->
