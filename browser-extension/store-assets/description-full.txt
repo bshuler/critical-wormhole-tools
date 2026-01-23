@@ -1,0 +1,53 @@
+Wormhole Browser - Secure P2P Web Browsing
+
+Browse websites hosted on wormhole addresses (wh://) directly in your browser. Connect to secure, peer-to-peer websites using memorable codes like "7-guitar-sunset" without needing IP addresses, port forwarding, or firewall configuration.
+
+KEY FEATURES:
+
+- Direct wh:// URL Navigation
+  Type wormhole addresses directly in your browser's address bar. No complicated setup required.
+
+- End-to-End Encryption
+  All connections are encrypted using the Magic Wormhole protocol (SPAKE2 + NaCl). Your data is secure from end to end.
+
+- Wormhole Name Service (WNS)
+  Access persistent addresses like wh://mysite.wns. Ed25519 cryptographic identities ensure you're connecting to the right host.
+
+- No Accounts Required
+  Use immediately without registration. Share codes to connect - that's it.
+
+- Zero Configuration
+  Works through NAT, firewalls, and corporate networks automatically.
+
+HOW IT WORKS:
+
+1. Install the extension
+2. Start the local daemon: `wh daemon start`
+3. Navigate to any wh:// URL
+4. The extension routes your request through the wormhole protocol
+
+PRIVACY:
+
+- No personal data collected
+- No analytics or tracking
+- All data stored locally
+- Open source: github.com/bshuler/critical-wormhole-tools
+
+REQUIREMENTS:
+
+- Critical Wormhole Tools CLI must be installed
+- The wh daemon must be running locally
+- Works with Chrome 109+ and Firefox 109+
+
+PERMISSIONS EXPLAINED:
+
+- proxy: Route wh:// URLs through the wormhole proxy
+- storage: Save your preferences locally
+- tabs: Handle wh:// URL navigation
+- all_urls: Required for proxy configuration
+
+For documentation and source code, visit:
+https://github.com/bshuler/critical-wormhole-tools
+
+Report issues:
+https://github.com/bshuler/critical-wormhole-tools/issues

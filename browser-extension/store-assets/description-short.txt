@@ -1,0 +1,1 @@
+Browse secure wormhole websites (wh://) with end-to-end encryption. No accounts needed.
