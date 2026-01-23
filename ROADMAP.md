@@ -313,7 +313,7 @@ Enable popular web servers to serve content over wormhole addresses natively.
 
 | Integration | Type | Status | Description |
 |-------------|------|--------|-------------|
-| Caddy | Go Plugin | 🚧 Scaffold | Native module with Caddyfile support |
+| Caddy | Go Plugin | ✅ Complete | Native module with Caddyfile support, integration tests |
 | Nginx | Reverse Proxy | ✅ Docs | Configuration examples |
 | Apache | Reverse Proxy | ✅ Docs | mod_proxy configuration |
 | HAProxy | Config | ✅ Docs | Load balancing configuration |

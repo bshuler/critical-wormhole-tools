@@ -92,4 +92,34 @@ Each fix entry follows this template:
 
 ---
 
+### FIX-006: Caddy plugin integration tests and documentation
+**Date**: 2026-01-23
+**Issue**: Caddy plugin lacked integration tests and comprehensive documentation
+**Root Cause**: Initial scaffold implementation focused on structure, not testing or examples
+**Fix Applied**:
+- Created `/integrations/caddy/integration_test.go` with 10 comprehensive integration tests
+- Updated `/integrations/caddy/README.md` with:
+  - Test instructions and coverage table
+  - 3 working examples (static files, reverse proxy, multiple sites)
+  - 5 documented known limitations with workarounds
+  - Comprehensive troubleshooting section
+  - Performance benchmarks and optimization tips
+**Tests Added**:
+- `TestIntegration_MockDaemonServer` - Daemon client with mock server
+- `TestIntegration_WormholeListener` - Listener accepts connections
+- `TestIntegration_WormholeConn_ReadWrite` - Read/write operations
+- `TestIntegration_WormholeConn_PartialRead` - Buffering partial reads
+- `TestIntegration_Deadline_Read` - Read deadline handling
+- `TestIntegration_Deadline_Write` - Write deadline handling
+- `TestIntegration_Deadline_Both` - SetDeadline for both read/write
+- `TestIntegration_Connection_Lifecycle` - Full connection lifecycle
+- `TestIntegration_MultipleConnections` - Concurrent connections
+**Related Files**:
+- `/integrations/caddy/integration_test.go`
+- `/integrations/caddy/README.md`
+- `/ROADMAP.md` (updated Caddy status from Scaffold to Complete)
+**Systemic Notes**: Integration tests use mock HTTP servers to avoid dependency on running daemon, enabling reliable CI testing
+
+---
+
 <!-- Add new fixes above this line -->
