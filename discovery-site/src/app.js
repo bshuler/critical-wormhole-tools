@@ -18,6 +18,54 @@ export const CONFIG = {
   useDilation: true  // Enable dilation for better performance
 };
 
+// Session storage key for persisting connections across page reloads
+const SESSION_KEY = 'wh-active-connections';
+
+/**
+ * Save connection to session storage for reconnection on reload
+ */
+function saveConnectionToSession(address, wormhole) {
+  try {
+    const sessions = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+    sessions[address] = {
+      code: wormhole.code,
+      connectedAt: Date.now(),
+      state: wormhole.state
+    };
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
+    console.log('[Session] Saved connection for:', address, wormhole.code);
+  } catch (e) {
+    console.warn('[Session] Failed to save connection:', e);
+  }
+}
+
+/**
+ * Get connection from session storage
+ */
+function getConnectionFromSession(address) {
+  try {
+    const sessions = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+    return sessions[address] || null;
+  } catch (e) {
+    console.warn('[Session] Failed to get connection:', e);
+    return null;
+  }
+}
+
+/**
+ * Clear connection from session storage
+ */
+export function clearConnectionFromSession(address) {
+  try {
+    const sessions = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+    delete sessions[address];
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(sessions));
+    console.log('[Session] Cleared connection for:', address);
+  } catch (e) {
+    console.warn('[Session] Failed to clear connection:', e);
+  }
+}
+
 // Active connections cache
 const activeConnections = new Map();
 
@@ -197,7 +245,7 @@ export async function resolveAddress(address) {
  * @returns {Promise<Wormhole>}
  */
 export async function ensureConnection(address, useDilation = CONFIG.useDilation) {
-  // Check for existing connection
+  // Check for existing connection in memory
   let wormhole = activeConnections.get(address);
 
   if (wormhole && (wormhole.state === WormholeState.CONNECTED || wormhole.state === WormholeState.DILATED)) {
@@ -214,11 +262,21 @@ export async function ensureConnection(address, useDilation = CONFIG.useDilation
     return wormhole;
   }
 
-  // Resolve address to code
-  const resolution = await resolveAddress(address);
+  // Check session storage for previous connection (page reload case)
+  const sessionConnection = getConnectionFromSession(address);
+  let resolution;
 
-  if (!resolution) {
-    throw new Error(`Could not resolve address: ${address}`);
+  if (sessionConnection && sessionConnection.code) {
+    // Try to reconnect with the previous code
+    console.log('[Session] Attempting to reconnect with previous code:', sessionConnection.code);
+    resolution = { code: sessionConnection.code, advertisement: null };
+  } else {
+    // Resolve address to code
+    resolution = await resolveAddress(address);
+
+    if (!resolution) {
+      throw new Error(`Could not resolve address: ${address}`);
+    }
   }
 
   console.log('Connecting with code:', resolution.code);
@@ -271,16 +329,27 @@ export async function ensureConnection(address, useDilation = CONFIG.useDilation
   } catch (error) {
     console.error('Connection failed:', error.message);
     notifyStateChange(address, 'failed');
+
+    // If this was a session reconnect attempt with "crowded" error, clear session
+    if (sessionConnection && error.message && error.message.includes('crowded')) {
+      console.log('[Session] Crowded error on reconnect, clearing session');
+      clearConnectionFromSession(address);
+    }
+
     throw error;
   }
 
   // Store connection
   activeConnections.set(address, wormhole);
 
+  // Save to session storage for reconnection on reload
+  saveConnectionToSession(address, wormhole);
+
   // Clean up on close
   wormhole.onStateChange = (newState) => {
     if (newState === WormholeState.CLOSED || newState === WormholeState.FAILED) {
       activeConnections.delete(address);
+      clearConnectionFromSession(address);
       notifyStateChange(address, 'closed');
     }
   };
@@ -577,6 +646,7 @@ export async function disconnectAddress(address) {
   if (wormhole) {
     await wormhole.close();
     activeConnections.delete(address);
+    clearConnectionFromSession(address);
     notifyStateChange(address, 'closed');
   }
 }

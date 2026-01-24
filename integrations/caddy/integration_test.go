@@ -561,3 +561,84 @@ func TestIntegration_MultipleConnections(t *testing.T) {
 		conn.Close()
 	}
 }
+
+// TestIntegration_RealWormholeConnection is a manual integration test
+// that requires a real wormhole daemon and connection.
+//
+// To run this test:
+//   1. Start the wormhole daemon: wh daemon start
+//   2. Run the test with -tags=integration flag:
+//      go test -v -tags=integration -run TestIntegration_RealWormholeConnection
+//
+// This test will:
+//   - Verify daemon connectivity
+//   - Create a real wormhole listener
+//   - Provide instructions for manual connection testing
+//
+// Note: This test is skipped by default (no -tags=integration flag)
+// and requires manual intervention to complete the full flow.
+func TestIntegration_RealWormholeConnection(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping real wormhole connection test in short mode")
+	}
+
+	// This test is primarily for manual verification.
+	// Automated testing of real wormhole connections requires:
+	// 1. Running daemon
+	// 2. Network connectivity to relay servers
+	// 3. Two-sided connection (sender and receiver)
+
+	ctx := context.Background()
+
+	// Create daemon client
+	client := NewDaemonClient()
+
+	// Verify daemon is running
+	t.Log("Checking daemon status...")
+	status, err := client.Status(ctx)
+	if err != nil {
+		t.Skipf("Daemon not available (this is OK for unit tests): %v", err)
+		return
+	}
+
+	if !status.Running {
+		t.Skipf("Daemon not running (this is OK for unit tests)")
+		return
+	}
+
+	t.Logf("Daemon is running - version: %s, uptime: %d seconds", status.Version, status.Uptime)
+
+	// Create a listener
+	t.Log("Creating wormhole listener...")
+	listenReq := &ListenRequest{
+		Protocol: "wh-http",
+	}
+
+	listenResp, err := client.Listen(ctx, listenReq)
+	if err != nil {
+		t.Fatalf("Failed to create listener: %v", err)
+	}
+
+	t.Logf("Listener created successfully!")
+	t.Logf("  Listener ID: %s", listenResp.ListenerID)
+	t.Logf("  Wormhole Code: %s", listenResp.Code)
+	t.Logf("  Status: %s", listenResp.Status)
+
+	// Clean up listener
+	defer func() {
+		t.Log("Cleaning up listener...")
+		if err := client.CloseListener(ctx, listenResp.ListenerID); err != nil {
+			t.Logf("Warning: Failed to close listener: %v", err)
+		}
+	}()
+
+	t.Log("")
+	t.Log("=== MANUAL TEST INSTRUCTIONS ===")
+	t.Log("To complete this test manually:")
+	t.Log("  1. Use the test script: ./test-real-connection.sh")
+	t.Log("  2. Or connect using: wh connect --http " + listenResp.Code)
+	t.Log("  3. Or test with Caddy: curl -H 'Host: " + listenResp.Code + ".wns' http://localhost:2019/")
+	t.Log("")
+	t.Log("Note: This test verifies daemon connectivity and listener creation.")
+	t.Log("Full end-to-end testing requires the test script or manual connection.")
+}

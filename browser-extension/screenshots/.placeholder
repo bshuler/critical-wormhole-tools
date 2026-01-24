@@ -1,0 +1,10 @@
+# Placeholder files for expected screenshots
+
+This directory should contain the following PNG files once captured:
+
+1. popup-connected.png (1280x800 px)
+2. viewer-page.png (1280x800 px)  
+3. settings-page.png (1280x800 px)
+4. address-bar.png (1280x800 px)
+
+See README.md in this directory for detailed capture instructions.

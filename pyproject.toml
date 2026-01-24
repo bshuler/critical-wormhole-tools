@@ -93,6 +93,8 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 markers = [
     "integration: marks tests as integration tests (slow, require network)",
+    "performance: marks tests as performance benchmarks (skipped by default)",
+    "slow: marks tests that take significant time to run",
 ]
 addopts = "-v --tb=short"
 

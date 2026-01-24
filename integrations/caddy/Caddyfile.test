@@ -1,0 +1,41 @@
+{
+	# Disable admin API endpoint (use CLI for management)
+	admin off
+
+	# Enable debug logging
+	log {
+		output stdout
+		level DEBUG
+		format console
+	}
+
+	# Disable automatic HTTPS
+	auto_https off
+}
+
+# Main test server on port 2019
+:2019 {
+	# Log all requests
+	log {
+		output stdout
+		format console
+	}
+
+	# Wormhole routing
+	route {
+		wormhole {
+			# Daemon API endpoint
+			daemon_url http://localhost:8765
+
+			# Enable debug logging
+			debug true
+
+			# Optional: Configure relay and transit servers
+			# relay_url wss://relay.magic-wormhole.io:4000/v1
+			# transit_url tcp:transit.magic-wormhole.io:4001
+		}
+	}
+
+	# Fallback for requests without wormhole code
+	respond "Wormhole Caddy Plugin Test Server\n\nUsage: curl -H 'Host: <code>.wns' http://localhost:2019/\n" 200
+}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Session Persistence Test</title>
+</head>
+<body>
+  <h1>Session Persistence Test</h1>
+  <div id="status"></div>
+  <button id="reload-btn">Reload Page</button>
+  
+  <script type="module">
+    import { ensureConnection, getActiveConnections } from './src/app.js';
+    
+    const statusEl = document.getElementById('status');
+    const reloadBtn = document.getElementById('reload-btn');
+    
+    async function testSessionPersistence() {
+      try {
+        // Test with a mock address
+        statusEl.innerHTML = '<p>Checking session storage...</p>';
+        
+        // Check if there's a session from previous load
+        const sessions = JSON.parse(sessionStorage.getItem('wh-active-connections') || '{}');
+        
+        if (Object.keys(sessions).length > 0) {
+          statusEl.innerHTML += '<p style="color: green;">✓ Found session from previous load:</p>';
+          statusEl.innerHTML += `<pre>${JSON.stringify(sessions, null, 2)}</pre>`;
+        } else {
+          statusEl.innerHTML += '<p style="color: orange;">No previous session found (this is normal on first load)</p>';
+        }
+        
+        // Check active connections
+        const activeConns = getActiveConnections();
+        statusEl.innerHTML += '<p>Active connections in memory: ' + Object.keys(activeConns).length + '</p>';
+        
+      } catch (error) {
+        statusEl.innerHTML += '<p style="color: red;">Error: ' + error.message + '</p>';
+      }
+    }
+    
+    reloadBtn.addEventListener('click', () => {
+      window.location.reload();
+    });
+    
+    testSessionPersistence();
+  </script>
+</body>
+</html>

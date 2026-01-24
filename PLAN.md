@@ -108,10 +108,12 @@ Enable web servers to serve over wormhole:
 
 ### 📋 Phase 6: Enterprise Features (v1.0.0) - DESIGN
 Planned enterprise capabilities:
-- Authentication & Authorization (LDAP/AD integration)
+- Authentication & Authorization (LDAP/AD integration, RBAC)
 - Audit Logging (JSON for SIEM)
 - Rate Limiting & Quotas
 - Multi-Tenancy (namespace isolation)
+
+**Design Document:** [docs/enterprise/PHASE6_DESIGN.md](docs/enterprise/PHASE6_DESIGN.md)
 
 ---
 
@@ -149,7 +151,7 @@ To set up a bootstrap node list, create `bootstrap.json`:
 8. [x] Add default identity support (implemented with CLI commands)
 9. [ ] Consider native Nginx module
 10. [ ] Consider native Traefik plugin
-11. [ ] Start Phase 6 design document
+11. [x] Start Phase 6 design document (docs/enterprise/PHASE6_DESIGN.md)
 
 ---
 
@@ -236,6 +238,7 @@ When resuming work, these files provide the most context:
 | `CHANGELOG.md` | What's been implemented |
 | `pyproject.toml` | Dependencies and config |
 | `integrations/caddy/` | Active development area |
+| `docs/enterprise/PHASE6_DESIGN.md` | Phase 6 enterprise features design |
 
 ---
 
