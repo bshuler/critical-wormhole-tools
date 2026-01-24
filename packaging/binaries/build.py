@@ -89,6 +89,13 @@ def build():
         "--hidden-import", "wh.transfer",
         "--hidden-import", "wh.wns",
         "--hidden-import", "wh.enterprise",
+        # Runtime hook to disable autobahn.nvx (needs .c file at runtime)
+        "--runtime-hook", str(build_dir / "hooks" / "pyi_rth_autobahn.py"),
+        # Exclude autobahn.nvx (optional accelerator that needs .c file at runtime)
+        "--exclude-module", "autobahn.nvx",
+        # Hidden imports for dependencies
+        "--hidden-import", "twisted.internet.reactor",
+        "--hidden-import", "twisted.internet.ssl",
         # Entry point
         str(Path(__file__).parent.parent.parent / "src" / "wh" / "cli" / "main.py"),
     ]
