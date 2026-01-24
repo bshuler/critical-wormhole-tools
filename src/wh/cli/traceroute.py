@@ -375,7 +375,7 @@ def traceroute(
                     await manager.create_and_allocate_code()
                     click.echo(f"Traceroute server listening on code: {manager.code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     trace_proto = TracerouteProtocol(
                         on_status=status,
@@ -392,7 +392,7 @@ def traceroute(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     trace_proto = TracerouteProtocol(
                         on_status=status,

@@ -409,7 +409,7 @@ def nmap(
                     await manager.create_and_allocate_code()
                     click.echo(f"Scanner listening on code: {manager.code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     nmap_proto = NmapProtocol(
                         on_status=status,
@@ -425,7 +425,7 @@ def nmap(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     nmap_proto = NmapProtocol(
                         on_status=status,

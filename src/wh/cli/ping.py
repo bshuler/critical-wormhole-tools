@@ -318,7 +318,7 @@ def ping(
                     click.echo(f"Listening on code: {manager.code}", err=True)
                     click.echo("Waiting for peer to connect...", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     ping_proto = PingProtocol(
                         on_status=click.echo,
@@ -333,7 +333,7 @@ def ping(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     ping_proto = PingProtocol(
                         count=count,

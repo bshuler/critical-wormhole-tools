@@ -1,3 +1,6 @@
+import 'react-native-get-random-values';
+// Required for crypto.getRandomValues() used by @noble libraries
+
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';

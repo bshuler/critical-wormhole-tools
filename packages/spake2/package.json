@@ -1,0 +1,45 @@
+{
+  "name": "@wormhole-tools/spake2",
+  "version": "0.1.0",
+  "description": "SPAKE2 Password-Authenticated Key Exchange - browser compatible implementation for Magic Wormhole",
+  "main": "src/index.js",
+  "types": "types/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "types": "./types/index.d.ts"
+    }
+  },
+  "files": [
+    "src/",
+    "types/",
+    "README.md"
+  ],
+  "scripts": {
+    "pack": "npm pack --dry-run"
+  },
+  "dependencies": {
+    "@noble/ed25519": "^2.0.0",
+    "@noble/hashes": "^1.3.0"
+  },
+  "keywords": [
+    "spake2",
+    "pake",
+    "cryptography",
+    "magic-wormhole",
+    "key-exchange",
+    "password-authenticated",
+    "ed25519"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bshuler/wormhole_netcat_ssh_scp_sftp_copy_curl_wget.git",
+    "directory": "packages/spake2"
+  },
+  "author": "Brian Shuler",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16"
+  }
+}

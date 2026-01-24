@@ -380,7 +380,7 @@ def vnc(
                     click.echo(f"VNC tunnel listening on code: {manager.code}", err=True)
                     click.echo(f"Will forward to VNC server at {vnc_host}:{DEFAULT_VNC_PORT + display}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     vnc_proto = VNCProtocol(
                         on_status=status,
@@ -397,7 +397,7 @@ def vnc(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     vnc_proto = VNCProtocol(
                         on_status=status,

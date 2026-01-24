@@ -366,7 +366,7 @@ def telnet(
                     click.echo(f"Telnet gateway listening on code: {manager.code}", err=True)
                     click.echo("Waiting for peer...", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
                     click.echo("Peer connected", err=True)
 
                     telnet_proto = TelnetProtocol(
@@ -381,7 +381,7 @@ def telnet(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     def on_data(data: bytes) -> None:
                         # Write received data to stdout

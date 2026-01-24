@@ -1,0 +1,39 @@
+{
+  "name": "@wormhole-tools/mailbox",
+  "version": "0.1.0",
+  "description": "Magic Wormhole mailbox client - WebSocket relay for rendezvous and message exchange",
+  "main": "src/index.js",
+  "types": "types/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "types": "./types/index.d.ts"
+    }
+  },
+  "files": [
+    "src/",
+    "types/",
+    "README.md"
+  ],
+  "scripts": {
+    "pack": "npm pack --dry-run"
+  },
+  "keywords": [
+    "magic-wormhole",
+    "mailbox",
+    "rendezvous",
+    "websocket",
+    "relay"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bshuler/wormhole_netcat_ssh_scp_sftp_copy_curl_wget.git",
+    "directory": "packages/mailbox"
+  },
+  "author": "Brian Shuler",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16"
+  }
+}

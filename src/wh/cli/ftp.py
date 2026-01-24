@@ -585,7 +585,7 @@ def ftp(
                     root_dir = os.path.abspath(root_dir)
                     click.echo(f"Serving directory: {root_dir}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     ftp_proto = FTPProtocol(
                         on_status=status,
@@ -600,7 +600,7 @@ def ftp(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     ftp_proto = FTPProtocol(
                         on_status=status,

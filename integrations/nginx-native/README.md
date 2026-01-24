@@ -32,24 +32,31 @@ Client Request (wh://example.tld)
 
 ## Building
 
-### Prerequisites
-
-- Nginx source code
-- C compiler (gcc/clang)
-- CMake 3.10+
-- `wh` daemon installed and running
-
-### Compile as Dynamic Module
+### Docker Build (Recommended)
 
 ```bash
-# Configure Nginx with dynamic module support
-./configure --add-dynamic-module=/path/to/nginx-native
+docker build -t nginx-wormhole .
+docker run -d -p 80:80 nginx-wormhole
+```
 
-# Build
+### Manual Build with nginx source
+
+```bash
+# Download nginx source (version must match your installation)
+wget http://nginx.org/download/nginx-1.25.5.tar.gz
+tar -xzf nginx-1.25.5.tar.gz
+cd nginx-1.25.5
+
+# Configure with the wormhole module
+./configure \
+    --add-dynamic-module=/path/to/nginx-native \
+    --with-compat
+
+# Build the module
 make modules
 
-# Install
-sudo cp objs/ngx_http_wormhole_module.so /usr/lib/nginx/modules/
+# Copy the module to nginx modules directory
+cp objs/ngx_http_wormhole_module.so /etc/nginx/modules/
 ```
 
 ### Compile Statically
@@ -220,6 +227,20 @@ ngx_http_wormhole_module.c
 
 ## Testing
 
+### Docker Testing (Recommended)
+
+Run tests on a system with Docker (e.g., hp1 or hp2):
+
+```bash
+# Run all tests
+./test/docker-test.sh
+
+# Force rebuild
+./test/docker-test.sh --no-cache
+```
+
+### Manual Testing
+
 ```bash
 # Start wh daemon
 wh daemon start
@@ -229,7 +250,19 @@ sudo nginx -c /path/to/nginx.conf
 
 # Test wormhole resolution
 curl -H "Host: wh://example.tld" http://localhost/
+
+# Verify module loads
+nginx -t
+
+# Check configuration
+nginx -T | grep wormhole
 ```
+
+## CI/CD
+
+GitHub Actions workflow automatically builds and tests the module on every push to `integrations/nginx-native/`.
+
+See `.github/workflows/nginx-module.yml` for details.
 
 ## Troubleshooting
 

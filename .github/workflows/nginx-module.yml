@@ -1,0 +1,42 @@
+name: Nginx Module
+
+on:
+  push:
+    paths:
+      - 'integrations/nginx-native/**'
+      - '.github/workflows/nginx-module.yml'
+  pull_request:
+    paths:
+      - 'integrations/nginx-native/**'
+      - '.github/workflows/nginx-module.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build nginx wormhole module
+        run: docker build -t nginx-wormhole integrations/nginx-native
+
+      - name: Test module loads
+        run: docker run --rm nginx-wormhole nginx -t
+
+      - name: Test module configuration
+        run: |
+          docker run --rm nginx-wormhole nginx -T | grep -q 'wormhole_enable'
+          docker run --rm nginx-wormhole nginx -T | grep -q 'wormhole_daemon'
+
+      - name: Verify module is loaded
+        run: |
+          docker run --rm nginx-wormhole nginx -V 2>&1 | grep -q 'ngx_http_wormhole_module' || \
+          docker run --rm nginx-wormhole test -f /etc/nginx/modules/ngx_http_wormhole_module.so
+
+      - name: Test nginx starts successfully
+        run: |
+          docker run -d --name nginx-test nginx-wormhole
+          sleep 2
+          docker exec nginx-test nginx -s reload
+          docker stop nginx-test
+          docker rm nginx-test

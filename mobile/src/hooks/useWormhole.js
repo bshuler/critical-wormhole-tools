@@ -14,8 +14,16 @@ export function useWormhole() {
 
   // Subscribe to wormhole service updates
   useEffect(() => {
-    const unsubscribe = wormholeService.subscribe((activeConnections) => {
-      setConnections(activeConnections);
+    const unsubscribe = wormholeService.subscribe((event) => {
+      // Update connections list on relevant events
+      if (['connected', 'disconnected', 'stateChange', 'dilationStateChange'].includes(event.type)) {
+        setConnections(wormholeService.getActiveConnections());
+      }
+
+      // Handle errors
+      if (event.type === 'error') {
+        setError(event.error);
+      }
     });
 
     // Initialize with current connections
@@ -25,19 +33,28 @@ export function useWormhole() {
   }, []);
 
   /**
-   * Connect to a peer using a wormhole code
+   * Connect to a peer using a wormhole code (receiver side)
    */
   const connect = useCallback(async (code) => {
     setConnecting(true);
     setError(null);
 
     try {
-      const connection = await wormholeService.connect(code);
+      const result = await wormholeService.connect(code);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
 
       // Store in connection history
+      const connection = {
+        code,
+        verifier: result.verifier,
+        connectedAt: Date.now(),
+      };
       await storageService.addConnectionHistory(connection);
 
-      return connection;
+      return result.verifier;
     } catch (err) {
       setError(err.message);
       throw err;
@@ -54,10 +71,57 @@ export function useWormhole() {
   }, []);
 
   /**
-   * Generate a new wormhole code
+   * Allocate a new wormhole code (sender side)
    */
-  const generateCode = useCallback(() => {
-    return wormholeService.generateCode();
+  const allocate = useCallback(async (numWords = 3) => {
+    setConnecting(true);
+    setError(null);
+
+    try {
+      const result = await wormholeService.allocate(numWords);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      return result.code;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setConnecting(false);
+    }
+  }, []);
+
+  /**
+   * Wait for peer to connect (after allocate)
+   */
+  const waitForPeer = useCallback(async (code) => {
+    setConnecting(true);
+    setError(null);
+
+    try {
+      const result = await wormholeService.waitForPeer(code);
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // Store in connection history
+      const connection = {
+        code,
+        verifier: result.verifier,
+        connectedAt: Date.now(),
+      };
+      await storageService.addConnectionHistory(connection);
+
+      return result.verifier;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setConnecting(false);
+    }
   }, []);
 
   /**
@@ -87,11 +151,11 @@ export function useWormhole() {
   }, []);
 
   /**
-   * Fetch content through a connection
+   * Receive data from a connection
    */
-  const fetch = useCallback(async (code, path) => {
+  const receive = useCallback(async (code, timeout = 30000) => {
     try {
-      return await wormholeService.fetch(code, path);
+      return await wormholeService.receive(code, timeout);
     } catch (err) {
       setError(err.message);
       throw err;
@@ -107,11 +171,12 @@ export function useWormhole() {
 
     // Actions
     connect,
+    allocate,
+    waitForPeer,
     disconnect,
-    generateCode,
     getConnection,
     send,
-    fetch,
+    receive,
     clearError,
   };
 }

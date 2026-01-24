@@ -380,7 +380,7 @@ def rdp(
                     click.echo(f"RDP tunnel listening on code: {manager.code}", err=True)
                     click.echo(f"Will forward to RDP server at {rdp_host}:{rdp_port}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     rdp_proto = RDPProtocol(
                         on_status=status,
@@ -396,7 +396,7 @@ def rdp(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     rdp_proto = RDPProtocol(
                         on_status=status,

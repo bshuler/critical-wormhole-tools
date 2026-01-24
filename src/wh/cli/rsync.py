@@ -368,7 +368,7 @@ def rsync(
                     click.echo(f"Rsync listening on code: {manager.code}", err=True)
                     click.echo(f"Destination: {dest_path}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     # Set up protocol
                     rsync_proto = RsyncProtocol(
@@ -455,7 +455,7 @@ def rsync(
                     await manager.create_and_set_code(code)
                     click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     # Set up protocol
                     rsync_proto = RsyncProtocol(

@@ -546,7 +546,7 @@ def mount(
                     root_dir = os.path.abspath(root_dir)
                     click.echo(f"Sharing directory: {root_dir}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     mount_proto = MountProtocol(
                         on_status=status,
@@ -561,7 +561,7 @@ def mount(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     mount_proto = MountProtocol(
                         on_status=status,

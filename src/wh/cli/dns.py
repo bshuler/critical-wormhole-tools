@@ -451,7 +451,7 @@ def dns(
                     await manager.create_and_allocate_code()
                     click.echo(f"DNS server listening on code: {manager.code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     dns_proto = DNSProtocol(
                         on_status=status,
@@ -465,7 +465,7 @@ def dns(
                     if verbose:
                         click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     dns_proto = DNSProtocol(
                         on_status=status,

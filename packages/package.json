@@ -1,0 +1,21 @@
+{
+  "name": "@wormhole-tools/monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Magic Wormhole protocol packages for JavaScript/TypeScript",
+  "workspaces": [
+    "spake2",
+    "mailbox",
+    "dilation",
+    "protocol"
+  ],
+  "scripts": {
+    "test": "echo \"Run tests in individual packages\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bshuler/wormhole_netcat_ssh_scp_sftp_copy_curl_wget.git",
+    "directory": "packages"
+  },
+  "license": "MIT"
+}

@@ -1,192 +1,283 @@
-import 'react-native-get-random-values';
-
 /**
  * WormholeService - Manages wormhole protocol connections
  *
- * This service handles peer-to-peer connections using wormhole codes.
- * Currently implements a placeholder for the full wormhole protocol,
- * which will be integrated from the browser-extension lib.
+ * This service integrates the magic wormhole protocol for React Native.
+ * Uses the browser extension's implementation adapted for mobile.
  */
+
+// TODO: Switch to @wormhole-tools/protocol once packages are published
+// For now, import from browser extension
+import { Wormhole, WormholeState } from '../../../browser-extension/src/lib/protocol/wormhole.js';
+
+const RELAY_URL = 'wss://relay.magic-wormhole.io/v1';
+const APP_ID = 'wh.tools/v1';
+
 class WormholeService {
   constructor() {
     this.connections = new Map();
-    this.listeners = new Set();
+    this.subscribers = new Set();
   }
 
   /**
    * Subscribe to connection state changes
-   * @param {Function} listener - Callback for state changes
+   * @param {Function} callback - Callback for state changes
    * @returns {Function} Unsubscribe function
    */
-  subscribe(listener) {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+  subscribe(callback) {
+    this.subscribers.add(callback);
+    return () => this.subscribers.delete(callback);
   }
 
   /**
-   * Notify all listeners of state change
+   * Notify all subscribers of events
+   * @param {Object} event - Event object
    */
-  _notifyListeners() {
-    const connections = this.getActiveConnections();
-    this.listeners.forEach(listener => listener(connections));
+  _notifySubscribers(event) {
+    this.subscribers.forEach(callback => callback(event));
   }
 
   /**
-   * Generate a random wormhole code
-   * @returns {string} A wormhole code in format "N-word-word"
+   * Allocate a new wormhole code (sender side)
+   * @param {number} numWords - Number of words in code (default: 3)
+   * @returns {Promise<Object>} Result with code
    */
-  generateCode() {
-    const words = [
-      'correct', 'horse', 'battery', 'staple', 'purple',
-      'monkey', 'rainbow', 'castle', 'dragon', 'wizard',
-      'crystal', 'thunder', 'glacier', 'phoenix', 'nebula'
-    ];
-    const num = Math.floor(Math.random() * 99) + 1;
-    const word1 = words[Math.floor(Math.random() * words.length)];
-    const word2 = words[Math.floor(Math.random() * words.length)];
-    return `${num}-${word1}-${word2}`;
+  async allocate(numWords = 3) {
+    try {
+      const wormhole = new Wormhole({
+        relayUrl: RELAY_URL,
+        appId: APP_ID,
+      });
+
+      // Set up event handlers
+      this._setupWormholeHandlers(wormhole, null);
+
+      const code = await wormhole.allocate(numWords);
+      this.connections.set(code, wormhole);
+
+      this._notifySubscribers({
+        type: 'allocated',
+        code,
+      });
+
+      return { success: true, code };
+    } catch (error) {
+      this._notifySubscribers({
+        type: 'error',
+        error: error.message,
+      });
+      return { success: false, error: error.message };
+    }
   }
 
   /**
-   * Connect to a peer using a wormhole code
-   * @param {string} code - The wormhole code to connect with
-   * @returns {Promise<Object>} Connection object
+   * Connect to a peer using a wormhole code (receiver side)
+   * @param {string} code - The wormhole code
+   * @returns {Promise<Object>} Result with verifier
    */
   async connect(code) {
-    if (!code || typeof code !== 'string') {
-      throw new Error('Invalid wormhole code');
-    }
+    try {
+      const wormhole = new Wormhole({
+        relayUrl: RELAY_URL,
+        appId: APP_ID,
+      });
 
-    const normalizedCode = code.trim().toLowerCase();
+      // Set up event handlers
+      this._setupWormholeHandlers(wormhole, code);
 
-    if (this.connections.has(normalizedCode)) {
-      const existing = this.connections.get(normalizedCode);
-      if (existing.state === 'connected') {
-        return existing;
+      await wormhole.connect(code);
+
+      // Enable WebRTC dilation for streaming protocols
+      try {
+        await wormhole.dilate();
+      } catch (dilationError) {
+        console.warn('[WormholeService] Dilation failed, continuing without it:', dilationError);
       }
-    }
 
-    const connection = {
-      id: Date.now().toString(36) + Math.random().toString(36).substr(2),
-      code: normalizedCode,
-      state: 'connecting',
-      connectedAt: null,
-      error: null,
+      this.connections.set(code, wormhole);
+
+      this._notifySubscribers({
+        type: 'connected',
+        code,
+        verifier: wormhole.verifier,
+      });
+
+      return { success: true, verifier: wormhole.verifier };
+    } catch (error) {
+      this._notifySubscribers({
+        type: 'error',
+        code,
+        error: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Set up event handlers for a wormhole instance
+   * @param {Wormhole} wormhole - The wormhole instance
+   * @param {string} code - The wormhole code (may be null for allocate)
+   */
+  _setupWormholeHandlers(wormhole, code) {
+    wormhole.onStateChange = (newState, oldState) => {
+      this._notifySubscribers({
+        type: 'stateChange',
+        code,
+        state: newState,
+        previousState: oldState,
+      });
     };
 
-    this.connections.set(normalizedCode, connection);
-    this._notifyListeners();
+    wormhole.onError = (error) => {
+      this._notifySubscribers({
+        type: 'error',
+        code,
+        error: error.message,
+      });
+    };
+
+    wormhole.onDilationStateChange = (newState, oldState) => {
+      this._notifySubscribers({
+        type: 'dilationStateChange',
+        code,
+        state: newState,
+        previousState: oldState,
+      });
+    };
+  }
+
+  /**
+   * Wait for peer to connect (after allocate)
+   * @param {string} code - The allocated wormhole code
+   * @returns {Promise<Object>} Result with verifier
+   */
+  async waitForPeer(code) {
+    const wormhole = this.connections.get(code);
+    if (!wormhole) {
+      throw new Error('No wormhole allocated with this code');
+    }
 
     try {
-      // TODO: Implement real wormhole protocol handshake
-      // This is where we'd integrate with the browser-extension's wormhole lib:
-      // - SPAKE2 key exchange
-      // - Relay server connection
-      // - Peer discovery and connection
+      await wormhole.waitForPeer();
 
-      // Simulate connection delay for now
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Simulate occasional connection failures for testing
-      if (Math.random() < 0.1) {
-        throw new Error('Peer not found or connection timeout');
+      // Enable WebRTC dilation for streaming protocols
+      try {
+        await wormhole.dilate();
+      } catch (dilationError) {
+        console.warn('[WormholeService] Dilation failed, continuing without it:', dilationError);
       }
 
-      connection.state = 'connected';
-      connection.connectedAt = Date.now();
-      this._notifyListeners();
+      this._notifySubscribers({
+        type: 'connected',
+        code,
+        verifier: wormhole.verifier,
+      });
 
-      return connection;
+      return { success: true, verifier: wormhole.verifier };
     } catch (error) {
-      connection.state = 'failed';
-      connection.error = error.message;
-      this._notifyListeners();
-      throw error;
+      this._notifySubscribers({
+        type: 'error',
+        code,
+        error: error.message,
+      });
+      return { success: false, error: error.message };
     }
   }
 
   /**
-   * Get a connection by code
+   * Disconnect a wormhole connection
    * @param {string} code - The wormhole code
-   * @returns {Object|undefined} Connection object
    */
-  getConnection(code) {
-    return this.connections.get(code?.toLowerCase());
-  }
-
-  /**
-   * Disconnect a connection by code
-   * @param {string} code - The wormhole code to disconnect
-   */
-  disconnect(code) {
-    const conn = this.connections.get(code?.toLowerCase());
-    if (conn) {
-      conn.state = 'closed';
-      this.connections.delete(code.toLowerCase());
-      this._notifyListeners();
+  async disconnect(code) {
+    const wormhole = this.connections.get(code);
+    if (wormhole) {
+      await wormhole.close();
+      this.connections.delete(code);
+      this._notifySubscribers({
+        type: 'disconnected',
+        code,
+      });
     }
   }
 
   /**
-   * Get all active (connected) connections
-   * @returns {Array<Object>} Array of active connection objects
-   */
-  getActiveConnections() {
-    return Array.from(this.connections.values())
-      .filter(c => c.state === 'connected');
-  }
-
-  /**
-   * Get all connections regardless of state
-   * @returns {Array<Object>} Array of all connection objects
-   */
-  getAllConnections() {
-    return Array.from(this.connections.values());
-  }
-
-  /**
-   * Send data through a connection
-   * @param {string} code - The connection code
-   * @param {*} data - Data to send
-   * @returns {Promise<void>}
+   * Send data through a wormhole connection
+   * @param {string} code - The wormhole code
+   * @param {Uint8Array|string} data - Data to send
    */
   async send(code, data) {
-    const conn = this.getConnection(code);
-    if (!conn || conn.state !== 'connected') {
-      throw new Error('No active connection for this code');
+    const wormhole = this.connections.get(code);
+    if (!wormhole) {
+      throw new Error('Not connected');
     }
-
-    // TODO: Implement actual data sending via wormhole protocol
-    // This would encrypt and send data through the established channel
-    console.log(`[Wormhole] Sending data on ${code}:`, data);
-
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await wormhole.send(data);
   }
 
   /**
-   * Fetch content through a wormhole connection
-   * @param {string} code - The connection code
-   * @param {string} path - The path/resource to fetch
-   * @returns {Promise<Object>} Fetched content
+   * Receive data from a wormhole connection
+   * @param {string} code - The wormhole code
+   * @param {number} timeout - Timeout in milliseconds
+   * @returns {Promise<Uint8Array>} Received data
    */
-  async fetch(code, path) {
-    const conn = this.getConnection(code);
-    if (!conn || conn.state !== 'connected') {
-      throw new Error('No active connection for this code');
+  async receive(code, timeout = 30000) {
+    const wormhole = this.connections.get(code);
+    if (!wormhole) {
+      throw new Error('Not connected');
     }
+    return await wormhole.receive(timeout);
+  }
 
-    // TODO: Implement actual content fetching
-    // This would request content from the connected peer
+  /**
+   * Get a wormhole connection instance
+   * @param {string} code - The wormhole code
+   * @returns {Wormhole|undefined} Wormhole instance
+   */
+  getConnection(code) {
+    return this.connections.get(code);
+  }
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+  /**
+   * Check if a wormhole is connected
+   * @param {string} code - The wormhole code
+   * @returns {boolean} True if connected
+   */
+  isConnected(code) {
+    const wormhole = this.connections.get(code);
+    return wormhole && (wormhole.state === WormholeState.CONNECTED || wormhole.state === WormholeState.DILATED);
+  }
 
-    return {
-      path,
-      content: `Content fetched from peer at ${path}`,
-      timestamp: Date.now(),
-    };
+  /**
+   * Check if a wormhole is dilated
+   * @param {string} code - The wormhole code
+   * @returns {boolean} True if dilated
+   */
+  isDilated(code) {
+    const wormhole = this.connections.get(code);
+    return wormhole && wormhole.state === WormholeState.DILATED;
+  }
+
+  /**
+   * Get all active connections
+   * @returns {Array<Object>} Array of connection info objects
+   */
+  getActiveConnections() {
+    const active = [];
+    for (const [code, wormhole] of this.connections.entries()) {
+      if (this.isConnected(code)) {
+        active.push({
+          code,
+          state: wormhole.state,
+          verifier: wormhole.verifier,
+          isDilated: wormhole.isDilated,
+        });
+      }
+    }
+    return active;
   }
 }
 
-// Singleton instance
+// Singleton export
 export const wormholeService = new WormholeService();
+export default wormholeService;
+
+// Re-export WormholeState for convenience
+export { WormholeState };

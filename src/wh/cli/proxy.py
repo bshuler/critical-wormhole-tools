@@ -428,7 +428,7 @@ def proxy(
                     click.echo(f"Proxy listening on code: {manager.code}", err=True)
                     click.echo("Waiting for peer...", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
                     click.echo("Peer connected, proxy active", err=True)
 
                     # Set up proxy protocol
@@ -471,7 +471,7 @@ def proxy(
                     await manager.create_and_set_code(code)
                     click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     # Set up proxy protocol
                     proxy_proto = ProxyProtocol(on_status=status)

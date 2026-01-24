@@ -381,7 +381,7 @@ def tunnel(
                     click.echo(f"Tunnel listening on code: {manager.code}", err=True)
                     click.echo("Waiting for peer...", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
                     click.echo("Peer connected, tunnel active", err=True)
 
                     # Set up tunnel protocol
@@ -426,7 +426,7 @@ def tunnel(
                     await manager.create_and_set_code(code)
                     click.echo(f"Connecting to: {code}", err=True)
 
-                    await manager.establish()
+                    await manager.dilate()
 
                     # Set up tunnel protocol
                     tunnel_proto = TunnelProtocol(on_status=status)
