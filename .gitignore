@@ -151,3 +151,4 @@ Thumbs.db
 browser-extension/test-*.html
 browser-extension/test-*.mjs
 browser-extension/test-*.py
+.omc/ultrawork-state.json
