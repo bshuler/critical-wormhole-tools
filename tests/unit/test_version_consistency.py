@@ -4,7 +4,6 @@ import json
 import re
 from pathlib import Path
 
-import pytest
 
 
 def get_project_root() -> Path:
@@ -56,7 +55,7 @@ def test_version_consistency():
         if version != canonical_version:
             mismatches.append(f"{file_path}: {version} (expected {canonical_version})")
 
-    assert not mismatches, f"Version mismatch found:\n" + "\n".join(mismatches)
+    assert not mismatches, "Version mismatch found:\n" + "\n".join(mismatches)
 
 
 def test_version_format():

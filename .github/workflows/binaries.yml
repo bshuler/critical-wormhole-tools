@@ -1,0 +1,54 @@
+name: Build Binaries
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: x64
+            name: linux-x86_64
+          - os: macos-latest
+            arch: x64
+            name: darwin-x86_64
+          - os: macos-latest
+            arch: arm64
+            name: darwin-arm64
+          - os: windows-latest
+            arch: x64
+            name: windows-x86_64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pyinstaller
+
+      - name: Build binary
+        run: python packaging/binaries/build.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wh-${{ matrix.name }}
+          path: packaging/binaries/dist/wh*
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: packaging/binaries/dist/wh*

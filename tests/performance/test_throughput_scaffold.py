@@ -1,7 +1,6 @@
 """Performance tests for throughput measurement."""
 
 import pytest
-from pathlib import Path
 
 
 @pytest.mark.performance

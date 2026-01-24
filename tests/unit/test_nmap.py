@@ -2,7 +2,7 @@
 
 import pytest
 import struct
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, patch
 import asyncio
 
 from wh.cli.nmap import (
@@ -196,7 +196,7 @@ class TestNmapProtocol:
 
         asyncio.create_task(set_complete())
 
-        results = await proto.scan("localhost", [80, 443])
+        await proto.scan("localhost", [80, 443])
 
         # Verify request was sent
         mock_protocol.send.assert_called_once()

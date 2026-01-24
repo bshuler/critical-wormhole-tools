@@ -1,10 +1,7 @@
 """Unit tests for enterprise namespace module."""
 
-import os
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -142,7 +139,7 @@ class TestNamespace:
 
     def test_can_join_max_members(self):
         """Test join permission with max members limit."""
-        ns = Namespace(
+        Namespace(
             name="test",
             public=True,
             max_members=2,

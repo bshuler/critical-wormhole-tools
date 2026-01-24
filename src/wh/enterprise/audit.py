@@ -28,7 +28,6 @@ Usage:
 import asyncio
 import json
 import logging
-import os
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

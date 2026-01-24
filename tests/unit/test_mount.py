@@ -5,15 +5,12 @@ import struct
 import json
 import os
 import errno
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, patch
 import asyncio
 
 from wh.cli.mount import (
     MountProtocol, FileAttr, check_fuse_available,
-    MSG_GETATTR, MSG_READDIR, MSG_READ, MSG_WRITE,
-    MSG_CREATE, MSG_MKDIR, MSG_UNLINK, MSG_RMDIR,
-    MSG_RENAME, MSG_TRUNCATE, MSG_CHMOD,
-    MSG_RESPONSE, MSG_ERROR,
+    MSG_GETATTR, MSG_RESPONSE, MSG_ERROR,
 )
 
 

@@ -4,7 +4,6 @@ from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 import tempfile
 from pathlib import Path
-import pytest
 
 
 # Expected list of all 25 commands
@@ -95,7 +94,7 @@ class TestCLIOptions:
             cli.commands['nc'] = mock_nc
 
             try:
-                result = runner.invoke(cli, ['--relay', 'myrelay', 'nc'])
+                runner.invoke(cli, ['--relay', 'myrelay', 'nc'])
 
                 # Verify resolve_relay was called with the relay option
                 mock_resolve.assert_called_once_with('myrelay')
@@ -127,7 +126,7 @@ class TestCLIOptions:
             cli.commands['nc'] = mock_nc
 
             try:
-                result = runner.invoke(cli, ['--transit', 'tcp:custom:5001', 'nc'])
+                runner.invoke(cli, ['--transit', 'tcp:custom:5001', 'nc'])
 
                 # Transit should be overridden
                 assert captured_ctx.get('transit') == "tcp:custom:5001"
@@ -154,7 +153,7 @@ class TestCLIOptions:
         cli.commands['nc'] = mock_nc
 
         try:
-            result = runner.invoke(cli, ['-c', '3', 'nc'])
+            runner.invoke(cli, ['-c', '3', 'nc'])
 
             # Should accept the custom code length
             assert captured_ctx.get('code_length') == 3
@@ -181,7 +180,7 @@ class TestCLIOptions:
         cli.commands['nc'] = mock_nc
 
         try:
-            result = runner.invoke(cli, ['-vv', 'nc'])
+            runner.invoke(cli, ['-vv', 'nc'])
 
             # Should count verbose flags
             assert captured_ctx.get('verbose') == 2
@@ -213,7 +212,7 @@ class TestCLIOptions:
             cli.commands['nc'] = mock_nc
 
             try:
-                result = runner.invoke(cli, ['-n', 'test-namespace', 'nc'])
+                runner.invoke(cli, ['-n', 'test-namespace', 'nc'])
 
                 # Should set namespace in context
                 assert captured_ctx.get('namespace') == 'test-namespace'

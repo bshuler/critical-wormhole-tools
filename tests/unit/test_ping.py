@@ -9,8 +9,7 @@ import asyncio
 import struct
 import statistics
 import time
-from unittest.mock import MagicMock, AsyncMock, call
-import pytest
+from unittest.mock import MagicMock
 
 from wh.cli.ping import (
     PingProtocol,

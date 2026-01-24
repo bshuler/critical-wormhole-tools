@@ -12,7 +12,6 @@ Requirements:
 - wh CLI: pip install -e .
 """
 
-import asyncio
 import os
 import re
 import signal

@@ -6,11 +6,7 @@ and real local network operations where possible.
 """
 
 import pytest
-import asyncio
-import os
-import tempfile
-import socket
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock
 
 
 # Mark all tests in this file as integration tests
@@ -118,7 +114,7 @@ class TestNmapIntegration:
     @pytest.mark.asyncio
     async def test_port_parsing(self):
         """Test port specification parsing."""
-        from wh.cli.nmap import parse_ports, COMMON_PORTS
+        from wh.cli.nmap import parse_ports
 
         # Test common ports
         ports = parse_ports("common")
@@ -154,7 +150,7 @@ class TestTracerouteIntegration:
     @pytest.mark.asyncio
     async def test_traceroute_protocol_init(self):
         """Test traceroute protocol initialization."""
-        from wh.cli.traceroute import TracerouteProtocol, HopResult
+        from wh.cli.traceroute import TracerouteProtocol
 
         proto = TracerouteProtocol(max_hops=10, queries=3, timeout=2.0)
 
@@ -286,7 +282,6 @@ class TestMountIntegration:
     async def test_mount_path_security(self, tmp_path):
         """Test mount protocol path traversal protection."""
         from wh.cli.mount import MountProtocol
-        import errno
 
         proto = MountProtocol(is_server=True, root_dir=str(tmp_path))
         mock_protocol = Mock()
@@ -482,6 +477,6 @@ class TestMainCLI:
         assert result.exit_code == 0
 
         # Check that new commands are listed
-        output = result.output.lower()
+        result.output.lower()
         # The commands should appear in the help output
         # (they may be in a different format depending on click version)

@@ -806,7 +806,7 @@ make docker-build     # Build Docker image
 
 The project has comprehensive test coverage across Python and JavaScript:
 
-**Python Tests (959 tests):**
+**Python Tests (1338 tests):**
 
 ```bash
 # All tests

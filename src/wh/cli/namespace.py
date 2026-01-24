@@ -218,7 +218,7 @@ def add_admin(name: str, identity: str):
 
     try:
         manager = get_namespace_manager()
-        ns = manager.add_admin(name, identity)
+        manager.add_admin(name, identity)
         click.echo(f"Added admin '{identity}' to namespace '{name}'")
 
     except NamespaceNotFoundError:
@@ -240,7 +240,7 @@ def remove_admin(name: str, identity: str):
 
     try:
         manager = get_namespace_manager()
-        ns = manager.remove_admin(name, identity)
+        manager.remove_admin(name, identity)
         click.echo(f"Removed admin '{identity}' from namespace '{name}'")
 
     except NamespaceNotFoundError:
@@ -262,7 +262,7 @@ def add_member(name: str, identity: str):
 
     try:
         manager = get_namespace_manager()
-        ns = manager.add_member(name, identity)
+        manager.add_member(name, identity)
         click.echo(f"Added member '{identity}' to namespace '{name}'")
 
     except NamespaceNotFoundError:
@@ -286,7 +286,7 @@ def remove_member(name: str, identity: str):
 
     try:
         manager = get_namespace_manager()
-        ns = manager.remove_member(name, identity)
+        manager.remove_member(name, identity)
         click.echo(f"Removed member '{identity}' from namespace '{name}'")
 
     except NamespaceNotFoundError:

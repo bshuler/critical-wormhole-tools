@@ -107,7 +107,7 @@ def main():
         print(f"\nNo test counts found in {plan_path}")
         return 0
 
-    print(f"\nDocumented in PLAN.md:")
+    print("\nDocumented in PLAN.md:")
     print(f"  Python tests: {documented.get('python', 'N/A')}")
     print(f"  Browser tests: {documented.get('browser', 'N/A')}")
 

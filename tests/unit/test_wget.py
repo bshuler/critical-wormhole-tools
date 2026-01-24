@@ -2,7 +2,6 @@
 
 import pytest
 import os
-from unittest.mock import MagicMock, AsyncMock, patch
 from click.testing import CliRunner
 
 from wh.cli.wget import wget

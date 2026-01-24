@@ -6,14 +6,15 @@ This test file covers all 12 sections with every interactive element.
 import sys
 from pathlib import Path
 
+import pytest
+from playwright.async_api import Page
+
+# Add tests directory to path for imports
 TESTS_DIR = Path(__file__).parent
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
-import pytest
-from playwright.async_api import Page, expect
-
-from test_full_integration import (
+from test_full_integration import (  # noqa: E402
     connect_to_wormhole,
     get_sandbox_frame,
     wait_for_content,
@@ -37,13 +38,13 @@ async def go_to_edge_cases(page: Page, discovery_url: str, wormhole_server, firs
         if "Edge Cases" in title:
             # Already on edge-cases page, no need to navigate
             return sandbox
-    except:
+    except Exception:
         pass
 
     # Wait for nav to be ready
     try:
         await sandbox.locator("nav").first.wait_for(state="visible", timeout=10000)
-    except:
+    except Exception:
         print("  WARNING: Nav not visible, page may be in unexpected state")
         # Try to recover by reloading
         await page.reload()

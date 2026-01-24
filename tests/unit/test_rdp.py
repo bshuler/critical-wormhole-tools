@@ -2,7 +2,7 @@
 
 import pytest
 import struct
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock, patch
 import asyncio
 
 from wh.cli.rdp import (

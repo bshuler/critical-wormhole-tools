@@ -2,8 +2,7 @@
 
 import os
 import tempfile
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import nacl.signing
@@ -13,7 +12,6 @@ from wh.enterprise.auth import (
     AuthMethod,
     AuthConfig,
     AuthResult,
-    Authenticator,
     NoAuthenticator,
     PubkeyAuthenticator,
     PasswordAuthenticator,

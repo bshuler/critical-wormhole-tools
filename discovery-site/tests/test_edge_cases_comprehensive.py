@@ -6,20 +6,18 @@ Tests every link type listed in the "Various Link Types" section.
 import sys
 from pathlib import Path
 
+import pytest
+from playwright.async_api import Page
+
 # Add tests directory to path
 TESTS_DIR = Path(__file__).parent
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
-import pytest
-from playwright.async_api import Page, expect
-
-from test_full_integration import (
+from test_full_integration import (  # noqa: E402
     connect_to_wormhole,
     get_sandbox_frame,
-    wait_for_content,
-    WORMHOLE_TIMEOUT,
-    CONTENT_TIMEOUT
+    wait_for_content
 )
 
 

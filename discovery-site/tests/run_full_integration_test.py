@@ -9,7 +9,6 @@ Run with: python tests/run_full_integration_test.py
 """
 
 import asyncio
-import json
 import os
 import re
 import signal
@@ -23,7 +22,7 @@ from typing import Optional
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from playwright.async_api import async_playwright, Page, Browser, TimeoutError as PlaywrightTimeout
+from playwright.async_api import async_playwright, Page, TimeoutError as PlaywrightTimeout
 
 # Configuration
 DISCOVERY_URL = os.environ.get(

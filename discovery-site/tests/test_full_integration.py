@@ -11,15 +11,14 @@ Run with:
 import sys
 from pathlib import Path
 
+import pytest
+from playwright.async_api import Page, expect
+
 # Add tests directory to path for imports
 TESTS_DIR = Path(__file__).parent
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
-import pytest
-from playwright.async_api import Page, expect
-
-from utils import ConsoleTracker
 
 
 # Common timeout for wormhole operations (connection can take time)
@@ -304,7 +303,6 @@ async def test_hash_link_behavior(page_with_tracking, discovery_url: str, wormho
     await wait_for_content(sandbox, "a[href='#section1']")
 
     # Get current URL
-    url_before = page.url
 
     # Click hash link
     hash_link = sandbox.locator("a[href='#section1']").first

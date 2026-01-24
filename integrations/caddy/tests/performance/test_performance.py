@@ -106,7 +106,6 @@ def test_manifest_scan_1000_files(tmp_path: Path):
 @pytest.mark.slow
 def test_concurrent_channels():
     """Test 100 tunnel channels without memory leak."""
-    import sys
 
     # Track initial memory usage
     try:
@@ -155,8 +154,6 @@ def test_concurrent_channels():
 @pytest.mark.slow
 def test_http_response_throughput():
     """Test >1000 req/s locally with mocked responses."""
-    from http.server import BaseHTTPRequestHandler
-    from io import BytesIO
 
     # Mock HTTP request/response cycle
     class MockRequest:

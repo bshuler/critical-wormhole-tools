@@ -3,14 +3,15 @@
 import sys
 from pathlib import Path
 
+import pytest
+from playwright.async_api import Page
+
+# Add tests directory to path for imports
 TESTS_DIR = Path(__file__).parent
 if str(TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(TESTS_DIR))
 
-import pytest
-from playwright.async_api import Page
-
-from test_full_integration import (
+from test_full_integration import (  # noqa: E402
     connect_to_wormhole,
     get_sandbox_frame,
     wait_for_content,
@@ -54,7 +55,7 @@ async def test_all_edge_case_links_visual(page: Page, discovery_url: str, wormho
             try:
                 await edge_link.click()
                 await page.wait_for_timeout(1500)
-            except:
+            except Exception:
                 pass
 
         # Find and click the link

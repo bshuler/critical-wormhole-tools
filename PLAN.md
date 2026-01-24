@@ -1,8 +1,8 @@
 # Critical Wormhole Tools - Project Plan
 
-> Last Updated: 2026-01-09
+> Last Updated: 2026-01-24
 > Current Version: 0.4.0
-> Current Phase: Phase 5 (Web Server Integration) - In Progress
+> Current Phase: Phase 5 (Web Server Integration) - Complete
 
 ---
 
@@ -22,7 +22,7 @@
 ## Current State
 
 ### Test Status
-- **Python Tests**: 791 passing
+- **Python Tests**: 1338 passing
 - **Browser Extension Tests**: 552 passing
 - **Linting**: All checks pass (ruff)
 - **Coverage**: ~44% overall
@@ -91,18 +91,18 @@ Browser integration for wormhole URLs:
 
 **Pending**: Publish to Chrome Web Store and Firefox Add-ons
 
-### 🚧 Phase 5: Web Server Integration (v0.5.0) - IN PROGRESS
+### ✅ Phase 5: Web Server Integration (v0.5.0) - COMPLETE
 Enable web servers to serve over wormhole:
 
 | Integration | Type | Status | Notes |
 |-------------|------|--------|-------|
 | Caddy | Go Plugin | Complete | Listener uses daemon API for connections |
 | Discovery Site | Static Site | Complete | Standalone wormhole browsing, GitHub Pages |
-| Nginx | Config | Docs | Reverse proxy examples |
-| Apache | Config | Docs | mod_proxy examples |
-| HAProxy | Config | Docs | Load balancing examples |
-| Traefik | Config | Docs | Traefik config docs |
-| Squid | Config | Docs | Caching proxy examples |
+| Nginx | Config | Complete | Reverse proxy examples |
+| Apache | Config | Complete | mod_proxy examples |
+| HAProxy | Config | Complete | Load balancing examples |
+| Traefik | Config | Complete | Traefik config docs |
+| Squid | Config | Complete | Caching proxy examples |
 
 **Discovery Site**: A standalone static website that provides wormhole browsing without requiring an extension or daemon. Bundles the complete protocol stack in JavaScript and deploys to GitHub Pages.
 

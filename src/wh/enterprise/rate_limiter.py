@@ -28,7 +28,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Set
 
-from wh.enterprise.policy import Policy, RateLimitConfig, QuotaConfig
+from wh.enterprise.policy import Policy, RateLimitConfig
 
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,6 @@
 """Integration tests for SSH tunnel module."""
 
-import asyncio
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
 import pytest
 
 

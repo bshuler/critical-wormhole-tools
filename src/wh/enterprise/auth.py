@@ -17,14 +17,13 @@ Usage:
         print(f"Authenticated as {result.identity}")
 """
 
-import asyncio
 import logging
 import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 import nacl.signing
 import nacl.encoding
@@ -389,7 +388,6 @@ class LDAPAuthenticator(Authenticator):
             )
 
         try:
-            import ldap3
             from ldap3 import Server, Connection, ALL, SUBTREE, Tls
             import ssl
 

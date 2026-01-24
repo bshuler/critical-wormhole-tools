@@ -35,7 +35,6 @@ Usage:
 """
 
 import logging
-import os
 from dataclasses import dataclass, field
 from ipaddress import ip_address, ip_network
 from pathlib import Path

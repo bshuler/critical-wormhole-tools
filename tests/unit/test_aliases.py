@@ -1,6 +1,5 @@
 """Unit tests for WNS aliases module."""
 
-import json
 import tempfile
 from pathlib import Path
 

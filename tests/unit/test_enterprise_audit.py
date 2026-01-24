@@ -3,9 +3,7 @@
 import json
 import os
 import tempfile
-from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from datetime import datetime
 
 import pytest
 
@@ -335,7 +333,7 @@ class TestAuditLogger:
             content = f.read()
             assert "auth_failure" in content
             # auth_success should not be present
-            lines = [l for l in content.strip().split("\n") if l]
+            lines = [line for line in content.strip().split("\n") if line]
             assert len(lines) == 1
 
     def test_success_only_filtering(self, temp_log_file):
@@ -455,6 +453,6 @@ class TestGlobalAuditLogger:
         import wh.enterprise.audit as audit_module
         audit_module._global_audit_logger = None
 
-        logger = get_audit_logger()
+        get_audit_logger()
         # May be None if not configured
         # This is expected behavior

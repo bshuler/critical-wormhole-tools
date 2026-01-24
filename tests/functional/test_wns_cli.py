@@ -1,14 +1,12 @@
 """Functional tests for wh WNS CLI commands (identity and alias management)."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from click.testing import CliRunner
 import tempfile
 from pathlib import Path
 import json
 import base64
-from datetime import datetime, timezone, timedelta
 
-import pytest
 
 
 class TestIdentityCreate:
@@ -423,7 +421,7 @@ class TestIdentityListNames:
     def test_identity_list_names(self):
         """Test that 'wh identity list-names' shows claimed names."""
         from wh.wns.cli import identity
-        from wh.wns.identity import WNSIdentityStore, WNSIdentity
+        from wh.wns.identity import WNSIdentity
         from wh.wns.names import NameClaimStore, NameClaim
 
         runner = CliRunner()

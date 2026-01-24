@@ -2,7 +2,7 @@
 
 import pytest
 import struct
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, patch
 import asyncio
 
 from wh.cli.traceroute import (

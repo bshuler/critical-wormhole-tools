@@ -1,5 +1,4 @@
 """Configuration for performance tests."""
-import pytest
 
 
 def pytest_configure(config):

@@ -2,13 +2,12 @@
 
 import pytest
 import struct
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, patch
 import asyncio
 
 from wh.cli.telnet import (
     TelnetProtocol,
-    MSG_CONNECT, MSG_CONNECT_OK, MSG_CONNECT_FAIL,
-    MSG_DATA, MSG_CLOSE,
+    MSG_CONNECT, MSG_DATA, MSG_CLOSE,
 )
 
 

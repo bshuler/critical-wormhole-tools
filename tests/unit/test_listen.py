@@ -1,7 +1,7 @@
 """Unit tests for wh listen command."""
 
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock, call
+from unittest.mock import patch, MagicMock, AsyncMock
 from click.testing import CliRunner
 import asyncio
 import tempfile

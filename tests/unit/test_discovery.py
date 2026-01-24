@@ -73,7 +73,7 @@ class TestDiscovery:
     async def test_start_stop(self):
         """Test starting and stopping discovery."""
         from wh.wns.discovery import Discovery
-        from unittest.mock import patch, AsyncMock
+        from unittest.mock import AsyncMock
 
         discovery = Discovery()
 
@@ -133,7 +133,6 @@ class TestWormholeCodeDetection:
 
     def test_valid_codes(self):
         """Test detection of valid wormhole codes."""
-        from wh.wns.discovery import Discovery
 
         # These should be recognized as wormhole codes
         valid_codes = [
@@ -159,7 +158,6 @@ class TestFileDiscoveryLookup:
         from wh.wns.discovery import FileDiscovery
         from wh.wns.advertisement import CodeAdvertisement
         from unittest.mock import MagicMock
-        import json
 
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = FileDiscovery(base_path=Path(tmpdir))
@@ -180,7 +178,7 @@ class TestFileDiscoveryLookup:
             ad_file.write_text(ad.to_json())
 
             # Lookup should find it
-            result = await backend.lookup(ad.address)
+            await backend.lookup(ad.address)
 
             # The verify will fail since it's a mock signature
             # but we test that file reading works

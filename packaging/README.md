@@ -8,6 +8,7 @@ This directory contains packaging configurations for various distribution channe
 |--------------|-----------|--------|-----------------|
 | PyPI | (root) | Ready | `pip install critical-wormhole-tools` |
 | Docker | (root) | Ready | `docker pull ghcr.io/bshuler/critical-wormhole-tools` |
+| Standalone Binaries | `binaries/` | Ready | Download from GitHub releases |
 | Homebrew | `homebrew/` | Ready | `brew install bshuler/tap/critical-wormhole-tools` |
 | Debian/Ubuntu | `debian/` | Ready | `apt install critical-wormhole-tools` |
 | RPM/Fedora | `rpm/` | Ready | `dnf install critical-wormhole-tools` |
@@ -65,6 +66,14 @@ nix develop
 ### Conda
 ```bash
 conda build packaging/conda
+```
+
+### Standalone Binaries
+```bash
+cd packaging/binaries
+pip install pyinstaller
+python build.py
+# Output: dist/wh-{version}-{os}-{arch}[.exe]
 ```
 
 ## Setting Up Distribution Channels

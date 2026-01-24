@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime, timezone, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import pytest
 
 
@@ -137,7 +137,6 @@ class TestCodeAdvertisement:
     def test_from_dict(self, mock_identity):
         """Test deserialization from dictionary."""
         from wh.wns.advertisement import CodeAdvertisement
-        import base64
 
         ad = CodeAdvertisement.create(
             identity=mock_identity,
@@ -236,7 +235,6 @@ class TestCodeAdvertisementVerification:
     def test_verify_expired_fails(self):
         """Test verification fails for expired advertisement."""
         from wh.wns.advertisement import CodeAdvertisement
-        from datetime import datetime, timezone, timedelta
 
         # Create an expired advertisement manually
         now = datetime.now(timezone.utc)
@@ -256,7 +254,6 @@ class TestCodeAdvertisementVerification:
     def test_create_sign_message(self):
         """Test _create_sign_message static method."""
         from wh.wns.advertisement import CodeAdvertisement
-        from datetime import datetime, timezone
 
         now = datetime.now(timezone.utc)
         later = datetime.fromtimestamp(now.timestamp() + 300, tz=timezone.utc)

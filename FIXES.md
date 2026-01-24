@@ -292,3 +292,107 @@ Each fix entry follows this template:
 ---
 
 <!-- Add new fixes above this line -->
+
+## Systemic Patterns
+
+This section documents recurring patterns identified across multiple fixes. Understanding these patterns helps prevent future issues and guides process improvements.
+
+### Pattern 1: Documentation Sync Issues
+**Occurrences**: FIX-004, FIX-014
+
+**Description**: Test counts and command references in documentation (PLAN.md, README.md) become outdated when tests or features are added but documentation isn't updated.
+
+**Root Cause**: Manual documentation updates not part of the development workflow. No automated verification that documentation reflects actual code state.
+
+**Impact**: Misleading documentation can confuse users and developers about project capabilities and test coverage.
+
+**Prevention**:
+- Run `scripts/verify_test_counts.py` in CI to catch mismatches
+- Add documentation updates to feature completion checklist
+- Consider generating sections of documentation from code (e.g., CLI help text, test counts)
+
+**Related Script**: `/scripts/verify_test_counts.py` (already exists)
+
+---
+
+### Pattern 2: Version Mismatch Across Files
+**Occurrences**: FIX-002
+
+**Description**: Version numbers in different package files (pyproject.toml, manifest.json, package.json) become out of sync during version bumps.
+
+**Root Cause**: Multiple sources of truth for version number without synchronization mechanism.
+
+**Impact**: Can cause confusion about which version is canonical, potential issues in release process.
+
+**Prevention**:
+- Add version sync verification to CI or pre-commit hooks
+- Consider single source of truth with automatic propagation
+- Document version bump process to update all files
+
+**Files to Monitor**:
+- `/pyproject.toml` (Python package version)
+- `/browser-extension/manifest.json` (extension version)
+- `/discovery-site/package.json` (site version)
+
+---
+
+### Pattern 3: Missing Tests for Edge Cases
+**Occurrences**: FIX-013
+
+**Description**: Optional dependencies (like playwright) cause import failures during test collection when type annotations reference unavailable types.
+
+**Root Cause**: Type annotations used unconditionally even when imports are wrapped in try/except blocks.
+
+**Impact**: Test collection fails for developers without optional dependencies installed, breaking development workflow.
+
+**Prevention**:
+- Always provide stub types (e.g., `Type = None`) in except blocks when using conditional imports
+- Document optional dependencies clearly in README and development docs
+- Consider using `TYPE_CHECKING` import guard for type-only imports
+
+**Example Fix**:
+```python
+try:
+    from playwright.sync_api import Browser, Page
+except ImportError:
+    Browser = None  # Stub type for annotations
+    Page = None
+```
+
+---
+
+### Pattern 4: Missing Documentation for Release Requirements
+**Occurrences**: FIX-005, FIX-007
+
+**Description**: Release requirements for browser extensions (privacy policy, store assets) not documented or created during development.
+
+**Root Cause**: No checklist for extension publishing requirements. Assets created reactively when needed rather than as part of development.
+
+**Impact**: Delays in release process, potentially blocking publication.
+
+**Prevention**:
+- Create comprehensive release checklist in CONTRIBUTING.md
+- Document all required assets for each distribution channel (Chrome Web Store, Firefox Add-ons, PyPI)
+- Include asset creation as part of feature completion for publishable components
+
+**Required Assets Identified**:
+- Privacy policy (both in-repo and web-accessible)
+- Store descriptions (short and full)
+- Screenshots/promotional images
+- Developer account setup instructions
+
+---
+
+### Pattern 5: Placeholder Values Left in Documentation
+**Occurrences**: FIX-003
+
+**Description**: Placeholder values (like dates with "XX") left in documentation after release.
+
+**Root Cause**: Release process doesn't verify all placeholders are filled in.
+
+**Impact**: Unprofessional appearance, confusion about actual release date.
+
+**Prevention**:
+- Search for common placeholder patterns before release (XX, TODO, FIXME, TBD)
+- Add placeholder check to CI or pre-release checklist
+- Use template files with clear instructions for filling in values

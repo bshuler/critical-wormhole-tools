@@ -1,7 +1,6 @@
 """Integration tests for WNS server module."""
 
 import tempfile
-import asyncio
 from pathlib import Path
 from unittest.mock import MagicMock, AsyncMock, patch
 import pytest
@@ -137,7 +136,8 @@ class TestWNSServer:
         from wh.wns.server import WNSServer
 
         statuses = []
-        on_status = lambda msg: statuses.append(msg)
+        def on_status(msg):
+            return statuses.append(msg)
 
         server = WNSServer(mock_identity, on_status=on_status)
         server._status("test message")

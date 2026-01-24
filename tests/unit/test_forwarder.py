@@ -1,6 +1,6 @@
 """Unit tests for PortForwarder."""
 
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock
 
 
 class TestPortForwarder:

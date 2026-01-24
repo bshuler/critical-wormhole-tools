@@ -22,15 +22,12 @@ Usage:
     wh --namespace=engineering ssh team-server
 """
 
-import asyncio
 import hashlib
-import json
 import logging
-import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 import yaml
 

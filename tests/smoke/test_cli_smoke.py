@@ -11,7 +11,6 @@ These tests verify that all CLI commands are functional at a basic level:
 import pytest
 from click.testing import CliRunner
 import importlib
-import sys
 
 
 # All CLI commands that should be available

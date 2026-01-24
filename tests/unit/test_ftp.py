@@ -2,14 +2,13 @@
 
 import pytest
 import struct
-import json
 import os
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, patch
 import asyncio
 
 from wh.cli.ftp import (
     FTPProtocol, FileInfo,
-    MSG_COMMAND, MSG_RESPONSE, MSG_DATA_START, MSG_DATA, MSG_DATA_END, MSG_ERROR,
+    MSG_COMMAND, MSG_RESPONSE, MSG_DATA_START, MSG_DATA, MSG_DATA_END,
 )
 
 

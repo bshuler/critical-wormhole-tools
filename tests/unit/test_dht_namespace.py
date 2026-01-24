@@ -1,8 +1,7 @@
 """Unit tests for DHT namespace encryption integration."""
 
-import hashlib
 import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
 
 
 class TestAddressToDhtKey:

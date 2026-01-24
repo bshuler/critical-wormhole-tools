@@ -20,7 +20,11 @@ except ImportError:
     Browser = None
     Page = None
 
-from utils import WormholeServer, ConsoleTracker
+try:
+    from utils import WormholeServer, ConsoleTracker
+except ImportError:
+    WormholeServer = None
+    ConsoleTracker = None
 
 
 # Path to test fixtures (browser extension test site)

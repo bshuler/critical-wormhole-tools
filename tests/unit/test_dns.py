@@ -3,7 +3,7 @@
 import pytest
 import struct
 import json
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
+from unittest.mock import Mock, patch
 import asyncio
 
 from wh.cli.dns import (

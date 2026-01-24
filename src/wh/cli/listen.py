@@ -10,15 +10,14 @@ Enterprise features:
 """
 
 import asyncio
-
 import click
 from typing import Optional
 
 from wh.cli.main import async_command
+from wh.core.wormhole_manager import WormholeManager
 
 # Dilation timeout - should match browser extension timeout
 DILATION_TIMEOUT = 30  # seconds
-from wh.core.wormhole_manager import WormholeManager
 
 
 @click.command()
@@ -143,7 +142,6 @@ async def listen(
     namespace = ctx.obj.get('namespace')
 
     # Set up enterprise features
-    authenticator = None
     audit_logger = None
 
     # Configure authentication
@@ -155,13 +153,13 @@ async def listen(
         if method == AuthMethod.PUBKEY:
             if not authorized_keys:
                 raise click.ClickException("--authorized-keys required for pubkey auth")
-            authenticator = create_authenticator(method, authorized_keys=authorized_keys)
+            create_authenticator(method, authorized_keys=authorized_keys)
             click.echo(f"Authentication: pubkey (authorized_keys: {authorized_keys})", err=True)
 
         elif method == AuthMethod.LDAP:
             if not ldap_server or not ldap_base_dn:
                 raise click.ClickException("--ldap-server and --ldap-base-dn required for ldap auth")
-            authenticator = create_authenticator(
+            create_authenticator(
                 method,
                 ldap_server=ldap_server,
                 ldap_base_dn=ldap_base_dn,
